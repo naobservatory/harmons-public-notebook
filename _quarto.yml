@@ -1,0 +1,17 @@
+project:
+  type: website
+  output-dir: docs
+
+website:
+  title: "Harmon's Public Notebook"
+  navbar:
+    background: "#de2d26"
+    foreground: white
+    search: true
+format:
+  html:
+    theme: cosmo
+    css: styles.css
+
+
+
