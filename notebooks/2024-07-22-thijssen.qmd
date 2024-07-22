@@ -5,10 +5,14 @@ author: "Harmon Bhasin"
 date: 2024-07-22
 format:
   html:
+    page-layout: full
     code-fold: true
     code-tools: true
     code-link: true
     df-print: paged
+execute: 
+  freeze: auto
+  cache: true
 editor: visual
 title-block-banner: "#de2d26"
 ---
@@ -36,11 +40,11 @@ theme_kit <- theme_base + theme(
 tnl <- theme(legend.position = "none")
 ```
 
-This is another potential study of (this series)\[https://data.securebio.org/harmons-public-notebook/notebooks/2024-07-08_cebria-mendoza.html\]. In this post, I analyze (Thijssen 2023)\[https://doi.org/10.3390/v15071425\], a dataset with \~20 samples from 100 healthy individuals in Iran.
+This is another potential study of [this series](https://data.securebio.org/harmons-public-notebook/notebooks/2024-07-08_cebria-mendoza.html). In this post, I analyze [Thijssen 2023](https://doi.org/10.3390/v15071425), a dataset with \~20 samples from 100 healthy individuals in Iran.
 
 # The raw data
 
-(This dataset)\[https://www.ncbi.nlm.nih.gov/bioproject/?term=PRJNA983534\] is composed of 21 samples which come from plasma pools of 5 people from Iran. In total, there were 100 healthy individuals that contributed to this pool. They did DNA + RNA sequencing for each pool, and the library preparation was combined so we do not have separate samples for each nucleic acid type.
+[This dataset](https://www.ncbi.nlm.nih.gov/bioproject/?term=PRJNA983534) is composed of 21 samples which come from plasma pools of 5 people from Iran. In total, there were 100 healthy individuals that contributed to this pool. They did DNA + RNA sequencing for each pool, and the library preparation was combined so we do not have separate samples for each nucleic acid type.
 
 In total, these 21 samples (they only report 20 so I need to check on this) contained 118M read pairs. The samples had 1.3M - 11.1M (mean 5.6M) read pairs each.
 
@@ -240,6 +244,7 @@ TODO interpret adapter content across different steps. Q score remain the same d
 #| warning: false
 #| label: plot-quality
 #| fig-height: 8
+#| fig-width: 10
 
 g_qual <- ggplot(mapping=aes(linetype=read_pair, group=interaction(sample,read_pair))) + 
   scale_linetype_discrete(name = "Read Pair") +
@@ -282,8 +287,7 @@ All samples tend to follow similar trends for deduplication, with a large decrea
 
 ```{r}
 #| label: preproc-dedup
-#| fig-height: 4
-#| fig-width: 6
+#| fig-width: 10
 
 stage_dup <- basic_stats %>% group_by(stage) %>% 
   summarize(dmin = min(percent_duplicates), dmax=max(percent_duplicates),
@@ -303,8 +307,7 @@ Ribosomal reads were quite low, near 1% for every sample.
 
 ```{r}
 #| label: ribo-frac
-#| fig-height: 4
-#| fig-width: 6
+#| fig-width: 10
 # Calculate reads lost during ribodepletion (approximation for % ribosomal reads)
 reads_ribo <- n_reads_rel %>% 
   filter(stage %in% c("dedup", "ribo_secondary")) %>% 
@@ -464,8 +467,7 @@ viral_families <- kraken_reports_viral_cleaned %>% filter(rank == "F")
 
 ```{r}
 #| label: viral-family-composition
-#| fig-height: 4
-#| fig-width: 8
+#| fig-width: 10
 
 major_threshold <- 0.05
 
@@ -528,7 +530,7 @@ mrg_hv <- read_tsv(hv_reads_path, show_col_types = FALSE) %>%
 
 ```{r}
 #| label: count-hv-reads
-#| fig-width: 8
+#| fig-width: 10
 #| warning: false
 # Get raw read counts
 read_counts_raw <- filter(basic_stats_raw) %>%
@@ -577,6 +579,8 @@ Composition of HV reads was changed from when looking at all viral reads. The tw
 
 ```{r}
 #| label: raise-hv-taxa
+#| include: false
+
 # Filter samples and add viral taxa information
 samples_keep <- read_counts %>% filter(n_reads_hv > 5) %>% pull(sample)
 mrg_hv_named <- mrg_hv %>% filter(sample %in% samples_keep, hv_status) %>% left_join(viral_taxa, by="taxid") 
@@ -618,8 +622,7 @@ hv_reads_family <- raise_rank(mrg_hv_named, viral_taxa, "family")
 
 ```{r}
 #| label: hv-family
-#| fig-height: 5
-#| fig-width: 7
+#| fig-width: 10
 threshold_major_family <- 0.05
 
 # Count reads for each human-viral family
@@ -798,12 +801,12 @@ result <- result %>%
 #result
 ```
 
-To get a good overview of families, genus, and species, we can look at a Sankey plot.
+To get a good overview of families, genus, and species, we can look at a Sankey plot where in the parenthesis is the magnitude of relative abundance.
 
 ```{r}
 #| label: hv-sankey
-#| width: 10
-#| height: 10
+#| fig-height: 15
+#| fig-width: 10
 #| warning: false
 
 # Function to create links
@@ -853,10 +856,8 @@ create_sankey_plot <- function(sankey_data) {
     Value = "value", 
     NodeID = "name",
     sinksRight = TRUE,
-    nodeWidth = 50,
+    nodeWidth = 25,
     fontSize = 14,
-    height = 800,
-    width = 1000
   )
 }
 
@@ -872,7 +873,9 @@ format_scientific <- function(x, digits=2) {
     } else {
       exponent <- floor(log10(abs(val)))
       coef <- val / 10^exponent
-      return(sprintf("%.1f × 10^%d", round(coef, digits), exponent))
+      #return(sprintf("%.1f × 10^%d", round(coef, digits), exponent))
+      # May or may not be smart, just keeping magnitude
+      return(sprintf("10^%d", exponent))
     }
   })
 }
@@ -891,15 +894,14 @@ sankey_data <- prepare_sankey_data(links, nodes)
 sankey <- create_sankey_plot(sankey_data)
 
 sankey
-save_sankey_as_png(sankey)
 ```
 
 To get a better idea of relative abundance of species, we can plot a dot plot, where each dot is the relative abundance of that species in a sample.
 
 ```{r}
 #| label: hv-species-dot
-#| width: 20
-#| height: 10
+#| fig-height: 10
+#| fig-width: 10
 #| warning: false
 
 species_family <- result %>% select(species, family) %>% rename('name' = 'species')
@@ -942,16 +944,14 @@ ra_dot <- ggplot(play, aes(x = ra_reads_hv, y=name)) +
     panel.border = element_blank(),
     panel.background = element_blank())
 ra_dot
-#ggsave(sprintf('%s/ra_viral_dot.jpg',data_dir), ra_dot, height = 8 ,width = 12)
-
 ```
 
 Here is the same dot plot, with Anelloviridae removed so that we can see the other species better.
 
 ```{r}
 #| label: hv-not-anello
-#| width: 20
-#| height: 10
+#| fig-height: 5
+#| fig-width: 10
 
 play_special <- play %>% filter(family != 'Anelloviridae')
 
@@ -981,9 +981,10 @@ ra_dot <- ggplot(play_special, aes(x = ra_reads_hv, y=name)) +
     panel.border = element_blank(),
     panel.background = element_blank())
 ra_dot
-#ggsave(sprintf('%s/ra_viral_dot_wout_anello.jpg',data_dir), ra_dot, height = 8 ,width = 12)
-
 ```
+
+
+I can then take all of the viruses that we found and look up what they're responsible for and whether they're dangerous.
 
 | Virus Name                                            | Common Name                                   | Pathogenic Potential                                                            |
 |-------------------|--------------------|---------------------------------|
@@ -1007,7 +1008,8 @@ ra_dot
 | Cardiovirus D                                         | Not widely known                              | Unknown, some cardioviruses can cause disease in animals                        |
 | Cosavirus A                                           | Not widely known                              | Unknown, potentially associated with gastroenteritis                            |
 
-I've ordered these from pathogenic potential to not. We do get coronavirus, however when we look up the taxid on NCBI, we get (the following)\[https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=694009&lvl=3&lin=f&keep=1&srchmode=1&unlock#note1\] which seems to be an id for general corona and not SARS-CoV-2.
+
+I've ordered these from pathogenic potential to not. We do get coronavirus, however when we look up the taxid on NCBI, we get [the following](https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=694009&lvl=3&lin=f&keep=1&srchmode=1&unlock#note1) which seems to be an id for general corona and not SARS-CoV-2.
 
 # Conclusion
 

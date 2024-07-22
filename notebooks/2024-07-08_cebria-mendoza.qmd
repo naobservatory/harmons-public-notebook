@@ -9,6 +9,8 @@ format:
     code-tools: true
     code-link: true
     df-print: paged
+execute: 
+  freeze: auto
 editor: visual
 title-block-banner: "#de2d26"
 ---
@@ -707,27 +709,27 @@ viral_species <- kraken_reports_viral_cleaned %>% filter(rank == "S")
 We're particulary interested in the following viruses:
 
 1.  Hepatitis B
-    -   Family: Hepadnaviridae 
-    -   Genus: Orthohepadnavirus 
+    -   Family: Hepadnaviridae
+    -   Genus: Orthohepadnavirus
     -   Species: Hepatitis B virus
 2.  Hepatitis C
-    -   Family: Flaviviridae 
-    -   Genus: Hepacivirus 
+    -   Family: Flaviviridae
+    -   Genus: Hepacivirus
     -   Species: Hepatitis C virus
 3.  EBV (Epstein-Barr virus)
-    -   Family: Herpesviridae 
-    -   Genus: Lymphocryptovirus 
+    -   Family: Herpesviridae
+    -   Genus: Lymphocryptovirus
     -   Species: Human gammaherpesvirus 4
 4.  CMV (Cytomegalovirus)
-    -   Family: Herpesviridae 
-    -   Genus: Cytomegalovirus 
+    -   Family: Herpesviridae
+    -   Genus: Cytomegalovirus
     -   Species: Human betaherpesvirus 5
 5.  HIV-1 (Human Immunodeficiency Virus type 1)
-    -   Family: Retroviridae 
-    -   Genus: Lentivirus 
+    -   Family: Retroviridae
+    -   Genus: Lentivirus
     -   Species: Human immunodeficiency virus 1
 6.  Anelloviridae
-    -   Family: Anelloviridae 
+    -   Family: Anelloviridae
 
 ```{r}
 #| label: family-detection
@@ -746,7 +748,6 @@ viral_families_interest
 
 ```
 
-
 ```{r}
 #| label: genus-detection
 
@@ -762,7 +763,6 @@ viral_genus_interest <- kraken_reports_viral_cleaned %>% filter(str_detect(tolow
 viral_genus_interest
 
 ```
-
 
 ```{r}
 #| label: species-detection
@@ -945,6 +945,7 @@ hv_family_collate <- hv_family_counts %>%
   arrange(desc(n_reads_tot))
 #hv_family_collate
 ```
+
 ```{r}
 #| label: hv-filter-family
 #| fig-height: 5
@@ -994,7 +995,6 @@ hv_family_collate <- hv_family_counts %>%
   arrange(desc(n_reads_tot))
 hv_family_collate
 ```
-
 
 ```{r}
 #| label: hv-composition-exclusion
@@ -1065,7 +1065,6 @@ rename(
 )
 
 ```
-
 
 ```{r}
 #| label: hv-filter-exclusion
@@ -1298,12 +1297,12 @@ non_spiked
 
 ```
 
-
 Unsurprisingly we get a lot of Anello virus, specifically torque teno virus. Once I filter those out we get a few interesting viruses: - Rhabdovirus - [Vesiculovirus](https://en.wikipedia.org/wiki/Vesiculovirus) - [Vesicular stomatitis Indiana virus](https://en.wikipedia.org/wiki/Indiana_vesiculovirus) - [Maraba virus](https://en.wikipedia.org/wiki/Oncolytic_virus) - Flavivirus - Pegivirus - [GB virus C](https://en.wikipedia.org/wiki/GB_virus_C)
 
 TODO look in to this.
 
 # Swab sampling esk analysis
+
 ```{r}
 library(stats)
 
@@ -1409,6 +1408,7 @@ ggplot(df_swab, aes(x = `Relative Abundance`, y = Subset, fill = `Sample Size`))
   ) 
 
 ```
+
 # Conclusion
 
 Overall, nothing dangerous was found in the blood, which is totally expected.

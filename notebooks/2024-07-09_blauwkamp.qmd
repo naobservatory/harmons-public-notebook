@@ -9,6 +9,8 @@ format:
     code-tools: true
     code-link: true
     df-print: paged
+execute: 
+  freeze: auto
 editor: visual
 title-block-banner: "#de2d26" 
 ---
@@ -611,7 +613,7 @@ sankey_diagram <- sankeyNetwork(Links = links_aggregated,
 ## Number of reads for viruses of interest
 
 ```{r}
-#| label: extract-viral-taxa
+#| label: extract-viral-taxa-two
 #| include: false
 
 # Get viral taxonomy
@@ -640,27 +642,27 @@ viral_species <- kraken_reports_viral_cleaned %>% filter(rank == "S")
 We're particulary interested in the following viruses:
 
 1.  Hepatitis B
-    -   Family: Hepadnaviridae 
-    -   Genus: Orthohepadnavirus 
+    -   Family: Hepadnaviridae
+    -   Genus: Orthohepadnavirus
     -   Species: Hepatitis B virus
 2.  Hepatitis C
-    -   Family: Flaviviridae 
-    -   Genus: Hepacivirus 
+    -   Family: Flaviviridae
+    -   Genus: Hepacivirus
     -   Species: Hepatitis C virus
 3.  EBV (Epstein-Barr virus)
-    -   Family: Herpesviridae 
-    -   Genus: Lymphocryptovirus 
+    -   Family: Herpesviridae
+    -   Genus: Lymphocryptovirus
     -   Species: Human gammaherpesvirus 4
 4.  CMV (Cytomegalovirus)
-    -   Family: Herpesviridae 
-    -   Genus: Cytomegalovirus 
+    -   Family: Herpesviridae
+    -   Genus: Cytomegalovirus
     -   Species: Human betaherpesvirus 5
 5.  HIV-1 (Human Immunodeficiency Virus type 1)
-    -   Family: Retroviridae 
-    -   Genus: Lentivirus 
+    -   Family: Retroviridae
+    -   Genus: Lentivirus
     -   Species: Human immunodeficiency virus 1
 6.  Anelloviridae
-    -   Family: Anelloviridae 
+    -   Family: Anelloviridae
 
 ```{r}
 #| label: family-detection
