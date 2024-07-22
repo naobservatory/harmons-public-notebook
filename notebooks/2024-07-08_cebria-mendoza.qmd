@@ -1,8 +1,8 @@
 ---
-title: "Workflow of Cebria-Mendoza 2021"
-subtitle: "Partial analysis of plasma dataset"
+title: "Workflow of Cebria-Mendoza et al. (2021)"
+subtitle: "Pooled plasma from Spain"
 author: "Harmon Bhasin"
-date: 2024-07-03
+date: 2024-07-08
 format:
   html:
     code-fold: true
@@ -21,8 +21,12 @@ library(cowplot)
 library(patchwork)
 library(fastqcr)
 library(RColorBrewer)
-setwd("/Users/harmonbhasin/work/securebio/nao-harmon/cebriamendoza2021/analysis")
-source("../../../sampling-strategies/scripts/aux_plot-theme.R")
+library(networkD3)
+library(readxl)
+library(htmlwidgets)
+library(ggbeeswarm)
+library(latex2exp)
+source("/Users/harmonbhasin/work/securebio/sampling-strategies/scripts/aux_plot-theme.R")
 theme_base <- theme_base + theme(aspect.ratio = NULL)
 theme_kit <- theme_base + theme(
   axis.text.x = element_text(hjust = 1, angle = 45),
@@ -66,7 +70,6 @@ quality_seq_stats_path <- file.path(qc_dir, "qc_quality_sequence_stats.tsv.gz")
 libraries_raw <- read_csv(libraries_path, show_col_types = FALSE)
 meta_data <- read_csv(sprintf('%s/SraRunTable.txt', data_dir)) %>%
   rename(library=Run)
-#supplementary_data <- read_excel(sprintf('%s/supplementary_information/Supplementary_Table_S1.xlsx', data_dir))
 libraries <- left_join(libraries_raw, meta_data) %>%
   select(
     library,
@@ -76,9 +79,16 @@ libraries <- left_join(libraries_raw, meta_data) %>%
   ) %>%
   rename(sample=library,
     library=`Library Name`)
+supplementary_data <- read_excel(sprintf('%s/Supplementary_Table_S1.xlsx', data_dir), col_names = c('library', 'sex', 'age'))%>% slice(-(1:2)) %>%
+  group_by(library) %>% summarize(pool_size = n())
+supplementary_data$pool_size <- factor(supplementary_data$pool_size)
 
-sp_list <- paste0("SP", 1:60)
-libraries$library <- factor(libraries$library, levels=sp_list)
+#sp_list <- paste0("SP", 1:60)
+#libraries$library <- factor(libraries$library, levels=sp_list)
+
+most_to_least_reads_sample_list <- supplementary_data %>% arrange(desc(pool_size)) %>% pull(library)
+libraries <- left_join(libraries, supplementary_data, by = 'library')
+libraries$library <- factor(libraries$library, levels=most_to_least_reads_sample_list, labels=c(1:60))
 
 # Import QC data
 stages <- c("raw_concat", "cleaned", "dedup", "ribo_initial", "ribo_secondary")
@@ -130,23 +140,25 @@ Read quality in all the samples look quite good/consistent.
 # Prepare data
 basic_stats_raw_metrics <- basic_stats_raw %>%
   select(library,
+         pool_size,
          `# Read pairs` = n_read_pairs,
          `Total base pairs\n(approx)` = n_bases_approx,
          `% Duplicates\n(FASTQC)` = percent_duplicates) %>%
-  pivot_longer(-library, names_to = "metric", values_to = "value") %>%
-  mutate(metric = fct_inorder(metric))
+  pivot_longer(-(library:pool_size), names_to = "metric", values_to = "value") %>%
+  mutate(metric = fct_inorder(metric)) 
 
 # Set up plot templates
 
-g_basic <- ggplot(basic_stats_raw_metrics, aes(x=library, y=value)) +
+g_basic <- ggplot(basic_stats_raw_metrics, aes(x = library, y = value, fill = pool_size)) +
   geom_col(position = "dodge") +
   scale_x_discrete() +
-  scale_y_continuous(expand=c(0,0)) +
-  expand_limits(y=c(0,100)) +
-  facet_grid(metric~., scales = "free", space="free_x", switch="y") +
+  scale_y_continuous(expand = c(0, 0)) +
+  expand_limits(y = c(0, 100)) +
+  scale_fill_brewer(palette = "Accent") + 
+  facet_grid(metric ~ ., scales = "free", space = "free_x", switch = "y") +
   theme_kit + theme(
     axis.title.y = element_blank(),
-    strip.text.y = element_text(face="plain")
+    strip.text.y = element_text(face = "plain")
   )
 g_basic
 ```
@@ -202,10 +214,11 @@ The average fraction of reads at each stage in the preprocessing pipeline is sho
 ```{r}
 #| label: preproc-table
 
+# TODO: Group by pool size as well
 # Count read losses
 n_reads_rel <- basic_stats %>% 
-  select(sample, stage, percent_duplicates, n_read_pairs) %>%
-  group_by(sample) %>% 
+  select(sample, pool_size, stage, percent_duplicates, n_read_pairs) %>%
+  group_by(sample, pool_size) %>% 
   arrange(sample, stage) %>%
   mutate(p_reads_retained = n_read_pairs / lag(n_read_pairs),
          p_reads_lost = 1 - p_reads_retained,
@@ -323,12 +336,12 @@ reads_ribo <- n_reads_rel %>%
   filter(stage %in% c("dedup", "ribo_secondary")) %>% 
   group_by(sample) %>% 
   summarize(p_reads_ribo=1-n_read_pairs[2]/n_read_pairs[1], .groups = "drop") %>%
-  inner_join(libraries)
+  inner_join(libraries, by = 'sample')
 reads_ribo_summ <- reads_ribo %>%
   group_by(sample) %>%
   summarize(min=min(p_reads_ribo), max=max(p_reads_ribo),
             mean=mean(p_reads_ribo), .groups = "drop") %>%
-  inner_join(libraries)
+  inner_join(libraries, by = 'sample')
 g_reads_ribo <- ggplot(reads_ribo, 
                        aes(x=library, y=p_reads_ribo)) +
   geom_point() + 
@@ -346,6 +359,7 @@ As before, to assess the high-level composition of the reads, I ran the ribodepl
 
 ```{r}
 #| label: prepare-composition
+#| include: false
 
 classifications <- c("Filtered", "Duplicate", "Ribosomal", "Unassigned",
                      "Bacterial", "Archaeal", "Viral", "Human")
@@ -451,7 +465,7 @@ g_viral
 The two dominant viruses we see are Anellovirdae and Rhabdovirdae. Followed by these two viral families is Flavivirdae, and lastly, also by a much smaller percent, Microviridae.
 
 ```{r}
-#| label: extract-viral-taxa
+#| label: extract-viral-taxa-second
 
 # Get viral taxonomy
 viral_taxa_path <- file.path(data_dir, "total-virus-db.tsv.gz")
@@ -501,7 +515,7 @@ viral_families_display <- viral_families_major %>%
   arrange(desc(p_reads_viral)) %>% 
   mutate(name = factor(name, levels=c(viral_families_major_list, "Other"))) %>%
   rename(p_reads = p_reads_viral, classification=name) %>%
-  inner_join(libraries)
+  inner_join(libraries, by='sample')
 
 # Plot
 g_families <- g_comp_base + 
@@ -547,7 +561,7 @@ viral_families_display <- viral_families_major %>%
   arrange(desc(p_reads_viral)) %>% 
   mutate(name = factor(name, levels=c(viral_families_major_list, "Other"))) %>%
   rename(p_reads = p_reads_viral, classification=name) %>%
-  inner_join(libraries)
+  inner_join(libraries, by = 'sample')
 
 # Plot
 palette_viral <- c(brewer.pal(12, "Set3"), brewer.pal(8, "Dark2"), brewer.pal(9, "Set1"))
@@ -558,6 +572,212 @@ g_families_adj <- g_comp_base +
                      expand=c(0,0), labels = function(y) y*100) +
   scale_fill_manual(values=palette_viral, name = "Viral class")
 g_families_adj
+```
+
+```{r}
+#| label: viral-family-deep
+#| fig-height: 4
+#| fig-width: 8
+
+# Get viral taxonomy
+viral_taxa_path <- file.path(data_dir, "total-virus-db.tsv.gz")
+viral_taxa <- read_tsv(viral_taxa_path, show_col_types = FALSE)
+
+# Get Kraken reports
+reports_path <- file.path(tax_final_dir, "kraken_reports.tsv.gz")
+reports <- read_tsv(reports_path, show_col_types = FALSE) %>%
+  inner_join(libraries, by="sample") %>% arrange(sample)
+
+# Filter to viral taxa
+kraken_reports_viral <- filter(reports, taxid %in% viral_taxa$taxid) %>%
+  group_by(sample) %>%
+  mutate(p_reads_viral = n_reads_clade/n_reads_clade[1])
+kraken_reports_viral_cleaned <- kraken_reports_viral %>%
+  select(-pc_reads_total, -n_reads_direct, -contains("minimizers")) %>%
+  select(name, taxid, p_reads_viral, n_reads_clade, everything()) %>% 
+  rename(old_rank=rank) %>% ungroup
+
+major_threshold <- 0.01
+
+# Identify major viral families
+all_virus_name <- kraken_reports_viral_cleaned %>% 
+  group_by(name, taxid) %>%
+  summarize(p_reads_viral_max = max(p_reads_viral), .groups="drop") %>%
+  filter(p_reads_viral_max >= major_threshold) %>%
+  pull(name)
+
+kraken_reports_viral_cleaned <- kraken_reports_viral_cleaned %>% 
+  filter(name %in% all_virus_name) %>%
+  select(name, taxid, sample, p_reads_viral, n_reads_clade)
+
+```
+
+```{r}
+#| label: chat_gpt
+#| fig-height: 4
+#| fig-width: 8
+
+ranks_of_interest <- c('family','genus', 'species')
+
+# Filter the ranks we're interested in
+filtered_taxa <- viral_taxa %>%
+  filter(rank %in% ranks_of_interest)
+
+# Join the datasets and create the links dataframe
+links <- kraken_reports_viral_cleaned %>%
+  inner_join(filtered_taxa, by = c("taxid", "name")) %>%
+  inner_join(filtered_taxa, by = c("parent_taxid" = "taxid"), suffix = c("", "_parent")) %>%
+  #filter(rank != rank_parent) %>%  # Ensure source and target are not in the same rank
+  select(source = name_parent, target = name, value = p_reads_viral)
+
+# Create nodes dataframe from unique names in links
+nodes <- data.frame(
+  name = c(links$source, links$target) %>% unique()
+) %>%
+  mutate(node = row_number() - 1)  # zero-indexed for networkD3
+
+# Join rank information to nodes
+nodes <- nodes %>%
+  left_join(filtered_taxa, by = c("name")) %>%
+  select(name, node, rank)
+
+# Add IDs to links dataframe
+links <- links %>%
+  left_join(nodes, by = c("source" = "name")) %>%
+  rename(IDsource = node) %>%
+  left_join(nodes, by = c("target" = "name")) %>%
+  rename(IDtarget = node)
+
+# Aggregate link values
+links_aggregated <- links %>%
+  group_by(IDsource, IDtarget, source, target) %>%
+  summarise(value = sum(value), .groups = "drop")
+
+# Get rid of some warnings
+links_aggregated <- as.data.frame(links_aggregated)
+nodes <- as.data.frame(nodes)
+
+# Create Sankey diagram
+sankey_diagram <- sankeyNetwork(Links = links_aggregated, 
+                                Nodes = nodes,
+                                Source = "IDsource", 
+                                Target = "IDtarget",
+                                Value = "value", 
+                                NodeID = "name",
+                                fontSize = 12,
+                                NodeGroup = "rank",
+                                nodeWidth = 30,
+                                height = 800,
+                                width = 1000,
+                                sinksRight = FALSE)
+
+# Display the diagram
+sankey_diagram
+```
+
+## Number of reads for viruses of interest
+
+```{r}
+#| label: extract-viral-taxa
+#| include: false
+
+# Get viral taxonomy
+viral_taxa_path <- file.path(data_dir, "total-virus-db.tsv.gz")
+viral_taxa <- read_tsv(viral_taxa_path, show_col_types = FALSE)
+
+# Get Kraken reports
+reports_path <- file.path(tax_final_dir, "kraken_reports.tsv.gz")
+reports <- read_tsv(reports_path, show_col_types = FALSE) %>%
+  inner_join(libraries, by="sample") %>% arrange(sample) %>% drop_na()
+
+# Filter to viral taxa
+kraken_reports_viral <- filter(reports, taxid %in% viral_taxa$taxid) %>%
+  group_by(sample) %>%
+  mutate(p_reads_viral = n_reads_clade/n_reads_clade[1])
+kraken_reports_viral_cleaned <- kraken_reports_viral %>%
+  select(-pc_reads_total, -n_reads_direct, -contains("minimizers")) %>%
+  select(name, taxid, p_reads_viral, n_reads_clade, everything()) %>% ungroup
+
+viral_classes <- kraken_reports_viral_cleaned %>% filter(rank == "C")
+viral_families <- kraken_reports_viral_cleaned %>% filter(rank == "F")
+viral_genus <- kraken_reports_viral_cleaned %>% filter(rank == "G")
+viral_species <- kraken_reports_viral_cleaned %>% filter(rank == "S")
+```
+
+We're particulary interested in the following viruses:
+
+1.  Hepatitis B
+    -   Family: Hepadnaviridae 
+    -   Genus: Orthohepadnavirus 
+    -   Species: Hepatitis B virus
+2.  Hepatitis C
+    -   Family: Flaviviridae 
+    -   Genus: Hepacivirus 
+    -   Species: Hepatitis C virus
+3.  EBV (Epstein-Barr virus)
+    -   Family: Herpesviridae 
+    -   Genus: Lymphocryptovirus 
+    -   Species: Human gammaherpesvirus 4
+4.  CMV (Cytomegalovirus)
+    -   Family: Herpesviridae 
+    -   Genus: Cytomegalovirus 
+    -   Species: Human betaherpesvirus 5
+5.  HIV-1 (Human Immunodeficiency Virus type 1)
+    -   Family: Retroviridae 
+    -   Genus: Lentivirus 
+    -   Species: Human immunodeficiency virus 1
+6.  Anelloviridae
+    -   Family: Anelloviridae 
+
+```{r}
+#| label: family-detection
+
+#reads_post_process <- basic_stats %>% filter(stage == 'ribo_secondary') %>% 
+  #select(sample, n_read_pairs)
+
+viral_families_interest <- viral_families %>% filter(name == "Hepadnaviridae" | 
+    name ==  "Flaviviridae" | 
+    name ==  "Orthoherpesviridae" |
+    name ==  "Herpesviridae" |
+    name ==  "Retroviridae" |
+    name == "Anelloviridae") %>% group_by(name) %>% summarize(sum=sum(n_reads_clade))
+
+viral_families_interest
+
+```
+
+
+```{r}
+#| label: genus-detection
+
+# Species
+# Hepatitis B virus <- 10407
+# Hepatitis C virus <- 10407
+# HIV - 1 <- 11676
+
+# viral_taxa %>% filter(str_detect(tolower(name),'hepatitis') | str_detect(tolower(name),'human immunodeficiency virus') | str_detect(tolower(name),'gammaherpesvirus') | str_detect(tolower(name),'betaherpesvirus'))
+
+viral_genus_interest <- kraken_reports_viral_cleaned %>% filter(str_detect(tolower(name),'orthohepadnavirus') | str_detect(tolower(name),'hepacivirus') | str_detect(tolower(name),'lymphocryptovirus') | str_detect(tolower(name),'cytomegalovirus') | str_detect(tolower(name), 'lentivirus')) %>% group_by(name) %>% summarize(sum=sum(n_reads_clade))
+
+viral_genus_interest
+
+```
+
+
+```{r}
+#| label: species-detection
+
+# Species
+# Hepatitis B virus <- 10407
+# Hepatitis C virus <- 10407
+# HIV - 1 <- 11676
+
+# viral_taxa %>% filter(str_detect(tolower(name),'hepatitis') | str_detect(tolower(name),'human immunodeficiency virus') | str_detect(tolower(name),'gammaherpesvirus') | str_detect(tolower(name),'betaherpesvirus'))
+
+viral_species_interest <- kraken_reports_viral_cleaned %>% filter(str_detect(tolower(name),'hepatitis') | str_detect(tolower(name),'human immunodeficiency virus') | str_detect(tolower(name),'gammaherpesvirus') | str_detect(tolower(name),'betaherpesvirus')) %>% group_by(name) %>% summarize(sum=sum(n_reads_clade))
+
+viral_species_interest
+
 ```
 
 # Human-infecting virus reads
@@ -616,11 +836,10 @@ read_counts_long <- read_counts %>%
 read_counts_agg <- read_counts %>%
   mutate(p_reads_total = n_reads_hv/n_reads_raw,
          p_reads_preproc = n_reads_hv/n_reads_preproc) %>%
-  inner_join(libraries)
+  inner_join(libraries, by=c("sample"))
 read_counts_agg_long <- read_counts_agg %>%
   pivot_longer(starts_with("p_reads"), names_to="read_group", values_to="p_reads") %>%
-  mutate(read_group = ifelse(read_group == "p_reads_total", "All reads", "Preprocessed reads"))%>%
-  inner_join(libraries)
+  mutate(read_group = ifelse(read_group == "p_reads_total", "All reads", "Preprocessed reads")) 
 
 # Visualize
 g_read_counts <- ggplot(read_counts_agg_long, aes(x=library, y=p_reads)) +
@@ -704,7 +923,56 @@ hv_family_counts_major <- hv_family_counts %>%
                                levels = c(hv_family_major_tab$name, "Other")))
 hv_family_counts_display <- hv_family_counts_major %>%
   rename(p_reads = p_reads_hv, classification = name_display) %>%
-  inner_join(libraries)
+  inner_join(libraries, by = 'sample')
+
+# Plot
+g_hv_family <- g_comp_base + 
+  geom_col(data=hv_family_counts_display, position = "stack", width=1) +
+  scale_y_continuous(name="% HV Reads", limits=c(0,1.01), 
+                     breaks = seq(0,1,0.2),
+                     expand=c(0,0), labels = function(y) y*100) +
+  scale_fill_brewer(palette = 'Accent', name = "Viral family") +
+  labs(title="Family composition of human-viral reads") +
+  guides(fill=guide_legend(ncol=4)) +
+  theme(plot.title = element_text(size=rel(1.4), hjust=0, face="plain"))
+g_hv_family
+
+# Get most prominent families for text
+hv_family_collate <- hv_family_counts %>%
+  group_by(name, taxid) %>% 
+  summarize(n_reads_tot = sum(n_reads_hv),
+            p_reads_max = max(p_reads_hv), .groups="drop") %>% 
+  arrange(desc(n_reads_tot))
+#hv_family_collate
+```
+```{r}
+#| label: hv-filter-family
+#| fig-height: 5
+#| fig-width: 7
+threshold_major_family <- 0.05
+
+# Count reads for each human-viral family
+hv_family_counts <- hv_reads_family %>% 
+  filter(!(name %in% c("Anelloviridae", "Rhabdoviridae"))) %>%
+  group_by(sample, name, taxid) %>%
+  count(name = "n_reads_hv") %>%
+  group_by(sample) %>%
+  mutate(p_reads_hv = n_reads_hv/sum(n_reads_hv))
+
+# Identify high-ranking families and group others
+hv_family_major_tab <- hv_family_counts %>% group_by(name) %>% 
+  filter(p_reads_hv == max(p_reads_hv)) %>% filter(row_number() == 1) %>%
+  arrange(desc(p_reads_hv)) %>% filter(p_reads_hv > threshold_major_family)
+hv_family_counts_major <- hv_family_counts %>%
+  mutate(name_display = ifelse(name %in% hv_family_major_tab$name, name, "Other")) %>%
+  group_by(sample, name_display) %>%
+  summarize(n_reads_hv = sum(n_reads_hv), p_reads_hv = sum(p_reads_hv), 
+            .groups="drop") %>%
+  mutate(name_display = factor(name_display, 
+                               levels = c(hv_family_major_tab$name, "Other")))
+hv_family_counts_display <- hv_family_counts_major %>%
+  rename(p_reads = p_reads_hv, classification = name_display) %>%
+  inner_join(libraries, by = 'sample')
 
 # Plot
 g_hv_family <- g_comp_base + 
@@ -727,23 +995,420 @@ hv_family_collate <- hv_family_counts %>%
 hv_family_collate
 ```
 
+
 ```{r}
 #| label: hv-composition-exclusion
 #test <- hv_reads_family %>% filter(hit_hv == 1 & name %in% c('Anelloviridae', 'Flaviviridae', 'Hepeviridae', 'Microviridae', 'Rhabdoviridae')) %>% select(name, assigned_name) %>% distinct()
 #hv_reads_family %>% filter(hit_hv == 1 & name %in% c('Flaviviridae', 'Hepeviridae', 'Microviridae', 'Rhabdoviridae')) %>% select(name, assigned_name) %>% distinct()
 
 #hv_reads_family %>% filter(hit_hv == 1) %>% select(name, assigned_name) %>% distinct() %>% filter(!str_detect(tolower(assigned_name), "torque teno"))
-hv_reads_family %>% select(name, assigned_name) %>% distinct() %>% filter(!str_detect(tolower(assigned_name), "torque teno"))
+total <- basic_stats_raw %>% select(sample, n_read_pairs)
 
-hv_reads_family %>% select(assigned_name) %>% distinct() %>% filter(!str_detect(tolower(assigned_name), "torque teno"))
+hv_family_counts <- hv_reads_family %>% 
+  group_by(sample, name, taxid) %>%
+  count(name = "n_reads_hv") %>%
+  inner_join(total, by='sample') %>%
+  group_by(sample) %>%
+  mutate(ra_reads_hv = n_reads_hv/n_read_pairs)
 
-hv_reads_genus %>% select(name) %>% distinct() %>% filter(!str_detect(tolower(name), "torque teno"))
+hv_family_collate <- hv_family_counts %>%
+  group_by(name, taxid) %>% 
+  summarize(n_reads_tot = sum(n_reads_hv),
+            ra_reads_tot = mean(ra_reads_hv), .groups="drop") %>% 
+  arrange(desc(n_reads_tot))
+
+hv_family_collate <- hv_family_collate %>% 
+rename(
+'family' = 'name',
+'family_n_reads_tot' = 'n_reads_tot',
+'family_ra_reads_tot' = 'ra_reads_tot',
+)
+
+hv_genus_counts <- hv_reads_genus %>% 
+  group_by(sample, name, taxid) %>%
+  count(name = "n_reads_hv") %>%
+  inner_join(total, by='sample') %>%
+  group_by(sample) %>%
+  mutate(ra_reads_hv = n_reads_hv/n_read_pairs)
+
+hv_genus_collate <- hv_genus_counts %>%
+  group_by(name, taxid) %>% 
+  summarize(n_reads_tot = sum(n_reads_hv),
+            ra_reads_tot = mean(ra_reads_hv), .groups="drop") %>% 
+  arrange(desc(n_reads_tot))
+
+hv_genus_collate <- hv_genus_collate %>% 
+rename(
+'genus' = 'name',
+'genus_n_reads_tot' = 'n_reads_tot',
+'genus_ra_reads_tot' = 'ra_reads_tot',
+)
+
+hv_species_counts <- hv_reads_species %>% 
+  group_by(sample, name, taxid) %>%
+  count(name = "n_reads_hv") %>%
+  inner_join(total, by='sample') %>%
+  group_by(sample) %>%
+  mutate(ra_reads_hv = n_reads_hv/n_read_pairs)
+
+hv_species_collate <- hv_species_counts %>%
+  group_by(name, taxid) %>% 
+  summarize(n_reads_tot = sum(n_reads_hv),
+            ra_reads_tot = mean(ra_reads_hv), .groups="drop") %>% 
+  arrange(desc(n_reads_tot))
+
+hv_species_collate <- hv_species_collate %>% 
+rename(
+'species' = 'name',
+'species_n_reads_tot' = 'n_reads_tot',
+'species_ra_reads_tot' = 'ra_reads_tot',
+)
+
 ```
+
+
+```{r}
+#| label: hv-filter-exclusion
+
+# Assuming the data is already loaded into tibbles:
+#hv_family_collate
+#hv_genus_collate
+#hv_species_collate
+#viral_taxa
+
+# Function to find parent taxa recursively
+find_parent_taxa <- function(taxid, target_ranks, taxa_data) {
+ current_taxid <- taxid
+  result <- setNames(vector("list", length(target_ranks)), target_ranks)
+  while (TRUE) {
+    row <- taxa_data %>% filter(taxid == current_taxid) %>% slice(1)
+    if (nrow(row) == 0) break  # If no matching taxid is found, break the loop
+    if (row$rank %in% target_ranks) {
+      result[[row$rank]] <- list(taxid = row$taxid, name = row$name)
+      if (all(!sapply(result, is.null))) {
+        break  # If all target ranks are found, break the loop
+      }
+    }
+    if (row$taxid == row$parent_taxid) {
+      break  # Avoid infinite loop at root
+    }
+    current_taxid <- row$parent_taxid
+  }
+  # Replace NULL with NA for any unfound ranks
+  result <- lapply(result, function(x) if (is.null(x)) list(taxid = NA, name = NA) else x)
+  return(result)
+}
+
+# Find all relevant parent taxa for each species
+result <- hv_species_collate %>%
+  mutate(
+    parent_info = map(taxid, ~find_parent_taxa(.x, c("species","subgenus", "genus", "subfamily", "family"), viral_taxa)),
+    genus_taxid = map_dbl(parent_info, ~.x$genus$taxid),
+    genus = map_chr(parent_info, ~.x$genus$name),
+    family_taxid = map_dbl(parent_info, ~.x$family$taxid),
+    family = map_chr(parent_info, ~.x$family$name)
+  ) %>%
+  select(-parent_info)
+
+# Join with genus counts
+result <- result %>%
+  left_join(
+    hv_genus_collate %>% select(taxid, genus_n_reads_tot, genus_ra_reads_tot),
+    by = c("genus_taxid" = "taxid")
+  )
+
+# Join with family counts
+result <- result %>%
+  left_join(
+    hv_family_collate %>% select(taxid, family_n_reads_tot, family_ra_reads_tot),
+    by = c("family_taxid" = "taxid")
+  )
+
+# Clean up
+result <- result %>%
+  select(-ends_with("_taxid"))
+
+#result
+```
+
+```{r}
+#| label: hv-sankey
+#| width: 10
+#| height: 10
+
+# Function to create links
+create_links <- function(data) {
+  family_to_genus <- data %>%
+    filter(!is.na(genus)) %>%
+    group_by(family, genus) %>%
+    summarise(value = n(), .groups = "drop") %>%
+    mutate(source = family, target = genus)
+  
+  genus_to_species <- data %>%
+    group_by(genus, species) %>%
+    summarise(value = n(), .groups = "drop") %>%
+    mutate(source = genus, target = species)
+
+  family_to_species <- data %>%
+    filter(is.na(genus)) %>%
+    group_by(family, species) %>%
+    summarise(value = n(), .groups = "drop") %>%
+    mutate(source = family, target = species)
+
+  bind_rows(family_to_genus, genus_to_species, family_to_species) %>%
+    filter(!is.na(source))
+}
+
+# Function to create nodes
+create_nodes <- function(links) {
+  data.frame(
+    name = c(links$source, links$target) %>% unique()
+  )
+}
+
+# Function to prepare data for Sankey diagram
+prepare_sankey_data <- function(links, nodes) {
+  links$IDsource <- match(links$source, nodes$name) - 1
+  links$IDtarget <- match(links$target, nodes$name) - 1
+  list(links = links, nodes = nodes)
+}
+
+# Function to create Sankey plot
+create_sankey_plot <- function(sankey_data) {
+  sankeyNetwork(
+    Links = sankey_data$links, 
+    Nodes = sankey_data$nodes,
+    Source = "IDsource", 
+    Target = "IDtarget",
+    Value = "value", 
+    NodeID = "name",
+    sinksRight = TRUE,
+    nodeWidth = 50,
+    fontSize = 14,
+    height = 800,
+    width = 1000
+  )
+}
+
+save_sankey_as_png <- function(sankey_plot, width = 1000, height = 800) {
+  # Save the plot as an HTML file
+  saveWidget(sankey_plot, sprintf('%s/sankey.html',image_dir))
+}
+
+format_scientific <- function(x, digits=2) {
+  sapply(x, function(val) {
+    if (is.na(val) || abs(val) < 1e-15) {
+      return("0")
+    } else {
+      exponent <- floor(log10(abs(val)))
+      coef <- val / 10^exponent
+      return(sprintf("%.1f × 10^%d", round(coef, digits), exponent))
+    }
+  })
+}
+
+data <- result %>% 
+  mutate(across(c(genus_n_reads_tot, genus_ra_reads_tot), ~replace_na(., 0)),
+         genus = ifelse(is.na(genus), "Unknown Genus", genus)) %>%
+  mutate(
+  species = paste0(species, sprintf(' (%s)', format_scientific(species_ra_reads_tot))),
+  genus = paste0(genus, sprintf(' (%s)', format_scientific(genus_ra_reads_tot))),
+  family = paste0(family, sprintf(' (%s)', format_scientific(family_ra_reads_tot)))
+)
+links <- as.data.frame(create_links(data))
+nodes <- create_nodes(links)
+sankey_data <- prepare_sankey_data(links, nodes)
+sankey <- create_sankey_plot(sankey_data)
+
+sankey
+#save_sankey_as_png(sankey)
+```
+
+```{r}
+#| label: hv-species-dot
+#| width: 20
+#| height: 10
+
+species_family <- result %>% select(species, family) %>% rename('name' = 'species')
+
+play <- hv_species_counts %>% 
+  ungroup() %>%
+  inner_join(libraries, by = 'sample') %>%
+  inner_join(species_family, by = 'name')
+
+play$family <- factor(play$family, levels=hv_family_collate %>% pull(family))
+play <- play %>%
+  arrange(family, name) %>%
+  mutate(name = factor(name, levels = unique(name)))
+#name_order <- play %>% arrange(family) %>% pull(name)
+#play$name <- factor(play$name, levels = name_order)
+
+ra_dot <- ggplot(play, aes(x = ra_reads_hv, y=name)) +
+  geom_quasirandom(orientation = 'y', aes(color = family)) +
+   scale_color_brewer(palette = "Accent") +
+    scale_x_log10(
+    "Relative abundance human virus reads",
+    labels = function(x) parse(text = paste0("10^", round(log10(x)))),
+    limits = c(1e-7, 1),
+    n.breaks = 8
+  ) +
+  labs(y = 'Human virus',
+       color = 'Viral family') + 
+  theme_light() + 
+    theme(
+    axis.text.y = element_text(size = 8),
+    axis.text.x = element_text(size = 14),
+    axis.ticks.y = element_blank(),axis.line = element_line(colour = "black"),
+    axis.title.x = element_text(size = 15),    
+    axis.title.y = element_text(size = 15),  
+    legend.text = element_text(size = 13),
+    legend.title = element_text(size = 16),
+    panel.grid.minor = element_blank(),
+    panel.border = element_blank(),
+    panel.background = element_blank())
+ra_dot
+#ggsave(sprintf('%s/ra_viral_dot.jpg',image_dir), ra_dot, height = 8 ,width = 12)
+
+```
+
+```{r}
+#| label: hv
+
+all <- hv_family_counts %>% 
+#  inner_join(basic_stats_raw, by = c('sample')) %>%
+  group_by(sample) %>%
+  summarize(sum_reads=sum(n_reads_hv), n_read_pairs=first(n_read_pairs)) %>%
+  mutate(ra = sum_reads/n_read_pairs) %>% 
+  pull(ra) %>% mean()
+
+prop_non <- hv_family_counts %>%  
+  filter(name %in% c('Rhabdoviridae','Microviridae')) %>%
+  group_by(sample) %>%
+  summarize(sum_reads_spiked = sum(n_reads_hv)) %>%
+  select(sample,sum_reads_spiked)
+
+non_spiked <- hv_family_counts %>% 
+  group_by(sample) %>%
+  summarize(sum_reads=sum(n_reads_hv), n_read_pairs=first(n_read_pairs)) %>% 
+  inner_join(prop_non, by = c('sample')) %>%
+  mutate(ra_non_spiked = (sum_reads-sum_reads_spiked)/(n_read_pairs-sum_reads_spiked)) %>%
+  pull(ra_non_spiked) %>% mean()
+all
+non_spiked
+
+```
+
 
 Unsurprisingly we get a lot of Anello virus, specifically torque teno virus. Once I filter those out we get a few interesting viruses: - Rhabdovirus - [Vesiculovirus](https://en.wikipedia.org/wiki/Vesiculovirus) - [Vesicular stomatitis Indiana virus](https://en.wikipedia.org/wiki/Indiana_vesiculovirus) - [Maraba virus](https://en.wikipedia.org/wiki/Oncolytic_virus) - Flavivirus - Pegivirus - [GB virus C](https://en.wikipedia.org/wiki/GB_virus_C)
 
 TODO look in to this.
 
+# Swab sampling esk analysis
+```{r}
+library(stats)
+
+simon <- hv_family_counts %>% 
+  filter(name == 'Anelloviridae') %>% 
+  ungroup() %>%
+  mutate(dataset='Cebria-Mendoza', ra=ra_reads_hv) %>%
+  select(ra_reads_hv, dataset)  %>% pull(ra_reads_hv)
+
+get_logit_normal_samples <- function(ras) {
+  ra_values <- ras %>% pull(1)  # Assuming the values are in the first column
+  zero_share <- mean(ra_values == 0)
+  ra_values <- ra_values[ra_values != 0]
+  
+  logit_ra_values <- qlogis(ra_values)
+  mean_val <- mean(logit_ra_values)
+  std_val <- sd(logit_ra_values)
+  
+  non_zero_samples <- rnorm(n = floor(100000 * (1 - zero_share)), mean = mean_val, sd = std_val)
+  samples <- plogis(non_zero_samples)
+  
+  zero_samples <- rep(0, floor(100000 * zero_share))
+  all_samples <- c(samples, zero_samples)
+  
+  tibble(samples = sample(all_samples))
+}
+
+simulate_p2ra <- function(sample_pop, ra_lists, prevalence) {
+  n_sick <- rpois(1, sample_pop * prevalence)
+  if (n_sick == 0) {
+    return(0)
+  }
+  
+  cumulative_ra_sick <- sum(sample(unlist(ra_lists), size = n_sick, replace = TRUE))
+  individual_ra_sick <- cumulative_ra_sick / n_sick
+  relative_abundance <- n_sick / sample_pop * individual_ra_sick
+  
+  return(relative_abundance)
+}
+
+simulate_p2ra_many <- function(ra_lists, sample_populations, n_simulations) {
+  prevalence <- get_prevalence()  # Assuming this function exists in your R environment
+  
+  results <- sample_populations %>%
+    set_names() %>%
+    map(~ replicate(n_simulations, simulate_p2ra(.x, ra_lists, prevalence))) %>%
+    map(sort)
+  
+  as_tibble(results)
+}
+
+get_prevalence <- function(){
+  prevelance = 0.01
+}
+
+get_swab_p2ra <- function(subset_titles, ra_lists, swab_sample_sizes = DEFAULT_SWAB_SAMPLE_SIZES) {
+  df_swab <- subset_titles %>%
+    set_names() %>%
+    map2_dfr(ra_lists, function(subset, ras) {
+      samples <- get_logit_normal_samples(tibble(ras))
+      
+      simulate_p2ra_many(samples$samples, swab_sample_sizes, n_simulations = 10000) %>%
+        mutate(Subset = subset) %>%
+        pivot_longer(
+          cols = -Subset,
+          names_to = "Sample Size",
+          values_to = "Relative Abundance"
+        )
+    })
+  
+  return(df_swab)
+}
+
+DEFAULT_SWAB_SAMPLE_SIZES <- subset_titles <- c("Cebria-Mendoza")
+ra_lists <- list(simon)
+DEFAULT_SWAB_SAMPLE_SIZES <- c(100, 200, 400)
+
+result <- get_swab_p2ra(subset_titles, ra_lists)
+
+
+
+```
+
+```{r}
+library(forcats)
+library(scales)
+
+result$`Sample Size` <- factor(result$`Sample Size`, levels=c('100','200','400'))
+df_swab <- result %>%
+    filter(`Relative Abundance` > 0) %>%
+    mutate(Subset = fct_reorder(Subset, `Relative Abundance`, .fun = median))
+  
+  # Create the plot
+ggplot(df_swab, aes(x = `Relative Abundance`, y = Subset, fill = `Sample Size`)) +
+  geom_violin(scale = "width", trim = FALSE, alpha = 0.7, draw_quantiles = c(0.5)) +
+  scale_x_log10("Relative abundance") +
+  scale_fill_brewer(palette = "Blues") +
+  theme_light() +
+  labs(
+  title = "Expected relative abundance at 1% prevelance of Anelloviridae",
+  x = "Relative Abundance",
+  y = ""
+  ) 
+
+```
 # Conclusion
 
 Overall, nothing dangerous was found in the blood, which is totally expected.
