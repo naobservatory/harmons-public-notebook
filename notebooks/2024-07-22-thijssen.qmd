@@ -1,6 +1,6 @@
 ---
 title: "Workflow of Thijssen et al. (2023)"
-subtitle: "Pooled plasma from Iran"
+subtitle: "Pooled plasma from Iran (DNA + RNA)"
 author: "Harmon Bhasin"
 date: 2024-07-22
 format:
@@ -20,6 +20,7 @@ title-block-banner: "#de2d26"
 ```{r}
 #| label: load-packages
 #| include: false
+ 
 library(tidyverse)
 library(cowplot)
 library(patchwork)
@@ -30,8 +31,11 @@ library(readxl)
 library(htmlwidgets)
 library(ggbeeswarm)
 library(latex2exp)
-image_dir <- image_dir <- '/Users/harmonbhasin/work/securebio/lab_meeting/blauwkamp'
-source("/Users/harmonbhasin/work/securebio/sampling-strategies/scripts/aux_plot-theme.R")
+library(languageserver)
+
+head_dir <- "/Users/harmonbhasin/work/securebio/"
+source(sprintf("%s/sampling-strategies/scripts/aux_plot-theme.R", head_dir))
+image_dir <- sprintf('%s/lab_meeting/thijssen', head_dir)
 theme_base <- theme_base + theme(aspect.ratio = NULL)
 theme_kit <- theme_base + theme(
   axis.text.x = element_text(hjust = 1, angle = 45),
@@ -40,13 +44,25 @@ theme_kit <- theme_base + theme(
 tnl <- theme(legend.position = "none")
 ```
 
-This is another potential study of [this series](https://data.securebio.org/harmons-public-notebook/notebooks/2024-07-08_cebria-mendoza.html). In this post, I analyze [Thijssen 2023](https://doi.org/10.3390/v15071425), a dataset with \~20 samples from 100 healthy individuals in Iran.
+This is another potential study of [this series](https://data.securebio.org/harmons-public-notebook/notebooks/2024-07-08_cebria-mendoza.html). In this post, I analyze [Thijssen 2023](https://doi.org/10.3390/v15071425), a dataset with 20 pooled samples from 100 healthy individuals in Iran.
 
 # The raw data
 
-[This dataset](https://www.ncbi.nlm.nih.gov/bioproject/?term=PRJNA983534) is composed of 21 samples which come from plasma pools of 5 people from Iran. In total, there were 100 healthy individuals that contributed to this pool. They did DNA + RNA sequencing for each pool, and the library preparation was combined so we do not have separate samples for each nucleic acid type.
+## About
 
-In total, these 21 samples (they only report 20 so I need to check on this) contained 118M read pairs. The samples had 1.3M - 11.1M (mean 5.6M) read pairs each.
+[This dataset](https://www.ncbi.nlm.nih.gov/bioproject/?term=PRJNA983534) is composed of 20 samples which come from plasma pools of 5 people from Iran. In total, there were 100 healthy individuals that contributed to this pool. For each pooled sample, they performed a combined DNA and RNA library preparation, resulting in a single sequencing output that captures both nucleic acid types. This approach provides comprehensive genetic information but precludes separate analysis of DNA and RNA from individual samples.
+
+### Sample + library preparation 
+
+This cross-sectional study was conducted from 2017 to 2018 in the Boushehr Province, Iran. The individuals were recruited in one of the five transfusion clinics located in Boushehr. In total 100 healthy blood donors were included. Seven milliliters of blood were collected from each individual during blood transfusion or donation. Immediately after collection, plasma was separated from the samples and stored at −70 °C. Plasma samples were shipped under freezing conditions to the Laboratory for Clinical and Epidemiological Virology, Rega Institute, KU Leuven, Belgium.
+
+Upon arrival, the samples were processed in the laboratory. Initially, the samples were centrifuged and 100 µL of the supernatant was pooled with five samples per pool. The pooled plasma samples were subjected to an adapted version of the NetoVIR protocol for viral particle enrichment and metagenomic sequencing [20](https://www.mdpi.com/1999-4915/15/7/1425#B20-viruses-15-01425). To control for laboratory and environment contamination, negative controls were included in the different steps of the sample preparation procedure and pooled for sequencing. Pooled plasma samples and negative controls (H2O) were centrifuged for 3 min at 17,000× g and filtered through 0.8 µm polyether sulphone filters (Sartorius, Göttingen, Germany). To remove free-floating nucleic acids, the filtered samples were subjected to a nuclease treatment with a cocktail of 1 µL micrococcal nuclease (New England Biolabs, Ipswich, MA, USA) and 2 µL benzonase (Millipore, Burlington, United States) for 2 h at 37 °C. Both viral DNA and RNA were extracted (Viral RNA minikit, Qiagen, Hilden, Germany) and randomly amplified (including primary step of reverse transcription) with the Whole Transcriptome Amplification 2 kit (WTA2, Sigma Aldrich, Darmstadt, Germany) for 20 cycles. 
+
+The amplification product was purified with the MSB SPIN PCRAPACE kit (Stratec, Birkenfeld, Germany) and prepared for sequencing by using the Nextera XT kit (Illumina, San Diego, CA, USA). DNA products were quantified with the Qubit fluorometer (Thermo Fisher Scientific, Waltham, MA, USA), and the High-Sensitivity DNA kit (Agilent, Ratingen, Germany) for the Bioanalyzer 2100 (Agilent, Ratingen, Germany) was used to determine the average library fragment size. Samples were pooled in equimolar ratios, and paired-end sequencing (2 × 150 bp) was performed on a NextSeq 500 Illumina platform (Nucleomics Core, Leuven, Belgium) with an average of 10 million reads per sample.
+
+## Quality control
+
+In total, these 20 samples contained ~116M read pairs. The samples had 1.3M - 11.1M (mean ~5.8M) read pairs each.
 
 ```{r}
 #| warning: false
@@ -67,7 +83,13 @@ quality_seq_stats_path <- file.path(qc_dir, "qc_quality_sequence_stats.tsv.gz")
 
 # Import libraries and extract metadata from sample names
 libraries <- read_csv(libraries_path, show_col_types = FALSE)
-
+meta_data <- read_csv('/Users/harmonbhasin/work/securebio/nao-harmon/thijssen2023/preprocessing/SraRunTable.txt') %>%
+  select('Library Name', Run) %>% rename(sample = Run, library = 'Library Name')
+libraries <- libraries %>%
+  left_join(meta_data, by = 'sample') %>%
+  select(sample, library=library.y) %>% 
+  filter(library != 'PCL21')
+libraries
 # Import QC data
 stages <- c("raw_concat", "cleaned", "dedup", "ribo_initial", "ribo_secondary")
 basic_stats <- read_tsv(basic_stats_path, show_col_types = FALSE) %>%
@@ -100,15 +122,18 @@ quality_seq_stats <- read_tsv(quality_seq_stats_path, show_col_types = FALSE) %>
  
  # Get key values for readout
 raw_read_counts <- basic_stats_raw %>% 
-   summarize(rmin = min(n_read_pairs), rmax=max(n_read_pairs),
-             rmean=mean(n_read_pairs), 
-             rtot = sum(n_read_pairs),
-             btot = sum(n_bases_approx),
-             dmin = min(percent_duplicates), dmax=max(percent_duplicates),
-             dmean=mean(percent_duplicates), .groups = "drop")
+  summarize(rmin = min(n_read_pairs), 
+            rmax=max(n_read_pairs),
+            rmean=mean(n_read_pairs), 
+            rtot = sum(n_read_pairs),
+            btot = sum(n_bases_approx),
+            dmin = min(percent_duplicates), 
+            dmax=max(percent_duplicates),
+            dmean=mean(percent_duplicates), 
+            .groups = "drop")
 ```
 
-The number of reads looks pretty good, with every sample having at least 1M read pairs. The total number of base pairs also looks reasonable. The duplication rate is quite low, makes me think that Cebria-Mendoza had very high amounts of duplicates. I think this is approximately the number of duplicates we should see.
+The number of reads looks pretty good, although a few samples have a much lower number of reads. Considering the authors used these samples, we'll use the same. The total number of base pairs also looks reasonable, matching the trends of the number of reads. The duplication rate is low.
 
 ```{r}
 #| fig-width: 9
@@ -139,7 +164,7 @@ g_basic <- ggplot(basic_stats_raw_metrics, aes(x = library, y = value)) +
 g_basic
 ```
 
-Adapter content is quite high for the adapter called nextera-transposase-sequence. I need to look into this more deeply, TODO. As we'd expect, we see higher quality Q scores near the beginning of the read and a gradual decline towards the end of the read, however all positions seem to have a Q score of 35 which means that our reads are \~99.97% accurate. When looking at the Q score over all sequences, we can see a sharp peak around 35, which corresponds to the previous plot, indicating high read quality.
+Adapter content is quite high for nextera-transposase-sequence. I believe this is library contamination, I need to look into this TODO. As we'd expect, we see higher quality Q scores near the beginning of the read and a gradual decline towards the end of the read, however all positions seem to have a Q score of 35 which means that our reads are \~99.97% accurate. When looking at the Q score over all sequences, we can see a sharp peak around 35, which corresponds to the previous plot, indicating high read quality.
 
 ```{r}
 #| label: plot-raw-quality
@@ -185,7 +210,7 @@ g_quality_seq_raw
 
 ## High-level metrics
 
-The average fraction of reads at each stage in the preprocessing pipeline is shown in the following table. This explains the high adapter content score, it turns out that adapters weren't trimmed properly (only about %1 of reads lost), I would expect to lose more. Deduplication loses us about 30% of reads on average, then ribodepletion only loses as about 0.7% on average.
+The average fraction of reads at each stage in the preprocessing pipeline is shown in the following table. Adapter trimming & filtering doesn't lose too many reads. Deduplication loses us about 30% of reads on average, then ribodepletion only loses as about 0.7% on average.
 
 ```{r}
 #| label: preproc-table
@@ -238,7 +263,7 @@ g_reads_rel <- ggplot(n_reads_rel,
 g_reads_rel
 ```
 
-TODO interpret adapter content across different steps. Q score remain the same during read cleaning when looking at the positions, with the end of the read actually improving in score. Q scores across all sequences look pretty much the same throughout cleaning.
+Haven't spent the time to interpret the adapter stuff as yet. Q score remain the same during read cleaning when looking at the positions, with the end of the read actually improving in score. Q scores across all sequences look pretty much the same throughout cleaning.
 
 ```{r}
 #| warning: false
@@ -437,7 +462,7 @@ g_viral
 
 ## Taxonomic composition of viruses
 
-The two dominant viruses we see are Anellovirdae and Phycodnaviridae.
+The two dominant viruses we see are Anellovirdae and Phycodnaviridae. The threshold for the label "other" are the set of families that make up less than 5% composition in all samples.
 
 ```{r}
 #| label: extract-viral-taxa
@@ -575,7 +600,7 @@ g_read_counts
 
 ## Overall taxonomy and composition
 
-Composition of HV reads was changed from when looking at all viral reads. The two dominant viruses we see are Anellovirdae and Microviridae (bacteriophage).
+Composition of HV reads was changed from when looking at all viral reads. The two dominant viruses we see are Anellovirdae and Microviridae (bacteriophage). The threshold for the label "other" are the set of families that make up less than 5% composition in all samples.
 
 ```{r}
 #| label: raise-hv-taxa
@@ -668,6 +693,7 @@ hv_family_collate <- hv_family_counts %>%
 hv_family_collate
 ```
 
+## Species analysis
 ```{r}
 #| label: hv-composition-exclusion
 #| include: false
@@ -801,7 +827,7 @@ result <- result %>%
 #result
 ```
 
-To get a good overview of families, genus, and species, we can look at a Sankey plot where in the parenthesis is the magnitude of relative abundance.
+To get a good overview of families, genera, and species, we can look at a Sankey plot where the magnitude of relative abundance, averaged over all samples, is shown in parentheses.
 
 ```{r}
 #| label: hv-sankey
@@ -896,7 +922,7 @@ sankey <- create_sankey_plot(sankey_data)
 sankey
 ```
 
-To get a better idea of relative abundance of species, we can plot a dot plot, where each dot is the relative abundance of that species in a sample.
+To get a better idea of the relative abundance of species, we can create a dot plot where each dot represents the relative abundance of a particular species in a sample.
 
 ```{r}
 #| label: hv-species-dot
@@ -946,7 +972,7 @@ ra_dot <- ggplot(play, aes(x = ra_reads_hv, y=name)) +
 ra_dot
 ```
 
-Here is the same dot plot, with Anelloviridae removed so that we can see the other species better.
+We now exclude Anelloviridae from the plot.
 
 ```{r}
 #| label: hv-not-anello
@@ -983,11 +1009,10 @@ ra_dot <- ggplot(play_special, aes(x = ra_reads_hv, y=name)) +
 ra_dot
 ```
 
-
 I can then take all of the viruses that we found and look up what they're responsible for and whether they're dangerous.
 
 | Virus Name                                            | Common Name                                   | Pathogenic Potential                                                            |
-|-------------------|--------------------|---------------------------------|
+|-------------------------------------------------------|-----------------------------------------------|---------------------------------------------------------------------------------|
 | Rotavirus A                                           | Rotavirus                                     | High, causes severe diarrhea in children                                        |
 | Enterovirus C                                         | Includes poliovirus and some coxsackieviruses | High, can cause various diseases including polio                                |
 | Severe acute respiratory syndrome-related coronavirus | SARS coronavirus                              | High, causes severe respiratory illness                                         |
@@ -1008,9 +1033,10 @@ I can then take all of the viruses that we found and look up what they're respon
 | Cardiovirus D                                         | Not widely known                              | Unknown, some cardioviruses can cause disease in animals                        |
 | Cosavirus A                                           | Not widely known                              | Unknown, potentially associated with gastroenteritis                            |
 
-
 I've ordered these from pathogenic potential to not. We do get coronavirus, however when we look up the taxid on NCBI, we get [the following](https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=694009&lvl=3&lin=f&keep=1&srchmode=1&unlock#note1) which seems to be an id for general corona and not SARS-CoV-2.
+
+I'd like to BLAST some of these reads against the NCBI nt database to see if we can get some more info on them.
 
 # Conclusion
 
-I need to look at results more, but from a broad overview this dataset looks cool. I need to double check the adapter content stuff, but outside of that, I'm quite happy with this.
+Need to figure out adapter content interpretation.

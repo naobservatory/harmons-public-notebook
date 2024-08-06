@@ -11,6 +11,7 @@ format:
     df-print: paged
 execute: 
   freeze: auto
+  cache: true
 editor: visual
 title-block-banner: "#de2d26" 
 ---
@@ -44,7 +45,7 @@ The samples utilized in the determination of the reference range were collected 
 
 In total, these 170 samples contained 115M read pairs. The samples had 8 - 2M (mean .7M) read pairs each.
 
-COME BACK ADAPTER STATISTICS WERE NOT COMPUTED, slightly fucked up the multiqc, but we can solve it here. This probably explains why adapter statsistics were not computed.
+COME BACK ADAPTER STATISTICS WERE NOT COMPUTED, slightly messed up the multiqc, but we can solve it here. This probably explains why adapter statsistics were not computed.
 
 ```{r}
 #| warning: false

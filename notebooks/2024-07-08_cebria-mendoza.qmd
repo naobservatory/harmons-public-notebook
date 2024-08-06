@@ -1,6 +1,6 @@
 ---
 title: "Workflow of Cebria-Mendoza et al. (2021)"
-subtitle: "Pooled plasma from Spain"
+subtitle: "Pooled plasma from Spain (DNA + RNA)"
 author: "Harmon Bhasin"
 date: 2024-07-08
 format:
@@ -37,20 +37,31 @@ theme_kit <- theme_base + theme(
 tnl <- theme(legend.position = "none")
 ```
 
-THIS IS CURRENTLY A WORK IN PROGRESS!
+As a part of my time here, I'm exploring blood-based surveillance for novel viral pathogen detection. We've decided to make three blog posts. The first blog post will cover the physical and biological characteristics of blood, the second blog post will cover the blood sampling strategies, and the last blog post will look at the metagenomic profile of blood (which is what we're doing here, and will do for the next few posts).
 
-As a part of my time here, I'm exploring blood surveillance for a potential option for the NAO to pursue. Instead of writing a manuscript, we've decided to make three blog posts. The first blog post will cover why we're considering blood, the second blog post will cover the blood industry, and the last blog post will look at the composition of blood.
-
-After exhaustively looking at a bunch of studies, we've decided upon two. This is the analysis of the first study. One of the steps in doing so is analyzing relative abundance data in the healthy population. In this post, I analyze [Cebria-Mendoza 2021](https://doi.org/10.3390/v13112322), a dataset with 60 samples from \~600 healthy blood donors in Spain.
+This is the first of many studies that I'll be analyzing. however I don't expect all of them to be used in the last blog post. In this post, I analyze [Cebria-Mendoza 2021](https://doi.org/10.3390/v13112322), a dataset with 60 samples where each sample is a pool of 8-13 unique healthy donors, with a total of \~600 donors from Spain.
 
 # The raw data
 
-This dataset is composed of 60 samples which come from plasma pools of anywhere from 8-13 people from Spain. In total, there were 567 healthy individuals that have contributed to this pool. The demographic information that I have for each pool is the gender and age of the donor as well as the number that has contributed to each pool. They did DNA+RNA sampling for each pool, but the reads were not separately sequenced (so we cannot separate them?).
+## About
+
+This dataset is composed of 60 samples which come from plasma pools of anywhere from 8-13 people from Spain. In total, there were 567 healthy individuals that have contributed to these pools. The demographic information that I have for each pool is the gender and age of the donor as well as the number that has contributed to each pool. For each pooled sample, they performed a combined DNA and RNA library preparation, resulting in a single sequencing output that captures both nucleic acid types. This approach provides comprehensive genetic information but precludes separate analysis of DNA and RNA from individual samples.
+
+### Sample + library preparation 
+
+A total of 587 plasma samples from healthy donors were collected from the Centro de Transfusión de la Comunidad Valenciana (Valencia, Spain) from 15 September 2018 to 30 March 2019 and stored at −80 °C until use.
+
+Each of the 60 pools (SP1-SP60) analyzed in this study was obtained by mixing 1 mL of plasma from a variable number of donors (between 8- and 13-mL total). To assess viral recovery, each pool was spiked with 103 PFU of ϕX174 and 104 PFU of vesicular stomatitis virus (VSV). The purification protocol has been previously described in detail [18]. Briefly, plasma pools were processed with 1.0 µM filters to remove cells and other non-viral particles and the filtered fractions were subject to high-speed centrifugation (87,000 g, 2 h, 4 °C), washed with PBS 1X (87,000 g, 1 h, 4 °C), and resuspended in 245 µL 1X digestion buffer (Turbo DNA Free kit, Ambion, Carlsbad, CA, USA). Then, 5 µL of Turbo DNase, 2 µL of Benzonase (Sigma, Darmstadt, Germany) and 2 µL of micrococcal nuclease (NEB) were added to the sample to remove unprotected nucleic acids. After incubation (1 h, 37 °C), 20 µL of stop reagent was added, following the manufacturer’s instructions. Then, 240 µL supernatant was transferred to a new tube and split into two fractions: 200 µL fraction was used for RNA extraction using TRIzol LS reagent (Invitrogen, Carlsbad, USA), followed by purification with the QIAamp Viral RNA Mini kit (Qiagen, Hilden, Germany) and amplification with the QuantiTect Whole Transcriptome kit (Qiagen), and 40 µL fraction was used for DNA extraction with the QIAamp Viral RNA Mini kit and amplification with the TruePrime WGA kit (Sygnis, Heidelberg, Germany).
+
+For each pool, DNA and RNA amplification products were mixed in equimolar concentration before library preparation, which was carried out using Nextera XT DNA library preparation kit with 15 amplification cycles (Illumina, San Diego, USA), and subject to pair-end sequencing in a NextSeq device.
+
+*More details can be found in their [original paper](https://doi.org/10.1038%2Fs41598-021-86427-4) which outlined this protocol.*
+
+## Quality control
 
 In total, these 60 samples contained 230M read pairs. The samples had 2.3M - 4.8M (mean 3.8M) read pairs each.
 
-Read and base counts of the raw data were consistent with the previous pipeline version, as were read qualities, adapter content, and measured duplication levels.
-
+The number of read pairs and total base pairs looks good, however the duplication rate is quite high (this can be attributed to their sample preparation).
 ```{r}
 #| warning: false
 #| label: read-qc-data
@@ -132,8 +143,6 @@ raw_read_counts <- basic_stats_raw %>%
              dmean=mean(percent_duplicates), .groups = "drop")
 ```
 
-Read quality in all the samples look quite good/consistent.
-
 ```{r}
 #| fig-width: 9
 #| warning: false
@@ -165,7 +174,7 @@ g_basic <- ggplot(basic_stats_raw_metrics, aes(x = library, y = value, fill = po
 g_basic
 ```
 
-TODO interpret the below plot.
+Adapter content is low (the upper limit on the plot is 1%). Read quality seems good both over all the positions as well as over the number of sequences.
 
 ```{r}
 #| label: plot-raw-quality
@@ -181,8 +190,8 @@ g_qual_raw <- ggplot(mapping=aes(linetype=read_pair, group=interaction(sample,re
 # Visualize adapters
 g_adapters_raw <- g_qual_raw + 
   geom_line(aes(x=position, y=pc_adapters), data=adapter_stats_raw) +
-  scale_y_continuous(name="% Adapters", limits=c(0,NA),
-                     breaks = seq(0,100,10), expand=c(0,0)) +
+  scale_y_continuous(name="% Adapters", limits=c(0,1),
+                     expand=c(0,0)) +
   scale_x_continuous(name="Position", limits=c(0,NA),
                      breaks=seq(0,500,20), expand=c(0,0)) +
   facet_grid(.~adapter)
@@ -211,7 +220,7 @@ g_quality_seq_raw
 
 ## High-level metrics
 
-The average fraction of reads at each stage in the preprocessing pipeline is shown in the following table. On average, cleaning & deduplication removed about 57% of total read pairs, primarily during duplication. Ribodepletion removed about 6-8% during each round.
+The average fraction of reads at each stage in the preprocessing pipeline is shown in the following table. On average, cleaning & deduplication removed about 57% of total read pairs, primarily during duplication which makes sense given that the raw metrics show that the samples are quite high in duplication. Ribodepletion removed about 6-8% during each round.
 
 ```{r}
 #| label: preproc-table
@@ -237,32 +246,8 @@ n_reads_rel_display <- n_reads_rel %>%
 n_reads_rel_display
 ```
 
-```{r}
-#| label: preproc-figures
-#| warning: false
-#| fig-height: 3
-#| fig-width: 6
 
-g_stage_trace <- ggplot(basic_stats, aes(x=stage, group=sample)) +
-  theme_kit
-
-# Plot reads over preprocessing
-g_reads_stages <- g_stage_trace +
-  geom_line(aes(y=n_read_pairs)) +
-  scale_y_continuous("# Read pairs", expand=c(0,0), limits=c(0,NA))
-g_reads_stages
-
-# Plot relative read losses during preprocessing
-g_reads_rel <- ggplot(n_reads_rel, 
-                      aes(x=stage, group=sample)) +
-  geom_line(aes(y=p_reads_lost_abs_marginal)) +
-  scale_y_continuous("% Total Reads Lost", expand=c(0,0), 
-                     labels = function(x) x*100) +
-  theme_kit
-g_reads_rel
-```
-
-TODO interpret the below plot.
+Adapter content staays low. Read quality stays pretty similar over the positions, but improves over the number of sequences (predominantly from cleaning) throughout the pipeline.
 
 ```{r}
 #| warning: false
@@ -278,8 +263,8 @@ g_qual <- ggplot(mapping=aes(linetype=read_pair, group=interaction(sample,read_p
 # Visualize adapters
 g_adapters <- g_qual + 
   geom_line(aes(x=position, y=pc_adapters), data=adapter_stats) +
-  scale_y_continuous(name="% Adapters", limits=c(0,20),
-                     breaks = seq(0,50,10), expand=c(0,0)) +
+  scale_y_continuous(name="% Adapters", limits=c(0,1),
+                     , expand=c(0,0)) +
   scale_x_continuous(name="Position", limits=c(0,NA),
                      breaks=seq(0,140,20), expand=c(0,0)) +
   facet_grid(stage~adapter)
@@ -307,6 +292,33 @@ g_quality_seq
 ```
 
 ```{r}
+#| label: preproc-figures
+#| warning: false
+#| fig-height: 3
+#| fig-width: 6
+
+g_stage_trace <- ggplot(basic_stats, aes(x=stage, group=sample)) +
+  theme_kit
+
+# Plot reads over preprocessing
+g_reads_stages <- g_stage_trace +
+  geom_line(aes(y=n_read_pairs)) +
+  scale_y_continuous("# Read pairs", expand=c(0,0), limits=c(0,NA))
+g_reads_stages
+
+# Plot relative read losses during preprocessing
+g_reads_rel <- ggplot(n_reads_rel, 
+                      aes(x=stage, group=sample)) +
+  geom_line(aes(y=p_reads_lost_abs_marginal)) +
+  scale_y_continuous("% Total Reads Lost", expand=c(0,0), 
+                     labels = function(x) x*100) +
+  theme_kit
+g_reads_rel
+```
+
+Duplication rates are still quite high which is a bit concerning. Mean read length stays close to expected 150.
+
+```{r}
 #| label: preproc-dedup
 #| fig-height: 4
 #| fig-width: 6
@@ -324,8 +336,6 @@ g_readlen_stages <- g_stage_trace + geom_line(aes(y=mean_seq_len)) +
   scale_y_continuous("Mean read length (nt)", expand=c(0,0), limits=c(0,NA))
 g_readlen_stages
 ```
-
-## Effectiveness of ribodepletion
 
 Some samples had anywhere as low as 10% all the way up to 60% ribosomal reads.
 
@@ -357,7 +367,7 @@ g_reads_ribo
 
 ## High-level composition
 
-As before, to assess the high-level composition of the reads, I ran the ribodepleted files through Kraken2 and summarized the results with Bracken. This time, however, I used the full Standard database instead of Standard-16, and I also used a newer iteration of the database.
+To assess the high-level composition of the reads, we ran them through Kraken2 and summarized the results with Bracken.
 
 ```{r}
 #| label: prepare-composition
@@ -389,6 +399,7 @@ read_comp_summ <- comp %>%
          pc_reads = p_reads*100)
 
 ```
+
 
 ```{r}
 #| label: plot-composition-all
@@ -436,8 +447,6 @@ g_comp_assigned_minor <- g_comp_base +
 g_comp_assigned_minor
 ```
 
-TODO analyze this above
-
 ## Total viral content
 
 Total viral fraction average $1.81 \times 10^{-2}$ across samples. As a fraction of assigned (rather than total) reads, this jumped to $1.60 \times {-1}$:
@@ -464,7 +473,7 @@ g_viral
 
 ## Taxonomic composition of viruses
 
-The two dominant viruses we see are Anellovirdae and Rhabdovirdae. Followed by these two viral families is Flavivirdae, and lastly, also by a much smaller percent, Microviridae.
+The two dominant viruses we see are Anellovirdae and Rhabdovirdae (spike-in). Followed by these two viral families is Flavivirdae, and lastly, also by a much smaller percent, Microviridae (spike-in). The threshold for the label "other" are the set of families that make up less than 1% composition in all samples.
 
 ```{r}
 #| label: extract-viral-taxa-second
@@ -576,210 +585,6 @@ g_families_adj <- g_comp_base +
 g_families_adj
 ```
 
-```{r}
-#| label: viral-family-deep
-#| fig-height: 4
-#| fig-width: 8
-
-# Get viral taxonomy
-viral_taxa_path <- file.path(data_dir, "total-virus-db.tsv.gz")
-viral_taxa <- read_tsv(viral_taxa_path, show_col_types = FALSE)
-
-# Get Kraken reports
-reports_path <- file.path(tax_final_dir, "kraken_reports.tsv.gz")
-reports <- read_tsv(reports_path, show_col_types = FALSE) %>%
-  inner_join(libraries, by="sample") %>% arrange(sample)
-
-# Filter to viral taxa
-kraken_reports_viral <- filter(reports, taxid %in% viral_taxa$taxid) %>%
-  group_by(sample) %>%
-  mutate(p_reads_viral = n_reads_clade/n_reads_clade[1])
-kraken_reports_viral_cleaned <- kraken_reports_viral %>%
-  select(-pc_reads_total, -n_reads_direct, -contains("minimizers")) %>%
-  select(name, taxid, p_reads_viral, n_reads_clade, everything()) %>% 
-  rename(old_rank=rank) %>% ungroup
-
-major_threshold <- 0.01
-
-# Identify major viral families
-all_virus_name <- kraken_reports_viral_cleaned %>% 
-  group_by(name, taxid) %>%
-  summarize(p_reads_viral_max = max(p_reads_viral), .groups="drop") %>%
-  filter(p_reads_viral_max >= major_threshold) %>%
-  pull(name)
-
-kraken_reports_viral_cleaned <- kraken_reports_viral_cleaned %>% 
-  filter(name %in% all_virus_name) %>%
-  select(name, taxid, sample, p_reads_viral, n_reads_clade)
-
-```
-
-```{r}
-#| label: chat_gpt
-#| fig-height: 4
-#| fig-width: 8
-
-ranks_of_interest <- c('family','genus', 'species')
-
-# Filter the ranks we're interested in
-filtered_taxa <- viral_taxa %>%
-  filter(rank %in% ranks_of_interest)
-
-# Join the datasets and create the links dataframe
-links <- kraken_reports_viral_cleaned %>%
-  inner_join(filtered_taxa, by = c("taxid", "name")) %>%
-  inner_join(filtered_taxa, by = c("parent_taxid" = "taxid"), suffix = c("", "_parent")) %>%
-  #filter(rank != rank_parent) %>%  # Ensure source and target are not in the same rank
-  select(source = name_parent, target = name, value = p_reads_viral)
-
-# Create nodes dataframe from unique names in links
-nodes <- data.frame(
-  name = c(links$source, links$target) %>% unique()
-) %>%
-  mutate(node = row_number() - 1)  # zero-indexed for networkD3
-
-# Join rank information to nodes
-nodes <- nodes %>%
-  left_join(filtered_taxa, by = c("name")) %>%
-  select(name, node, rank)
-
-# Add IDs to links dataframe
-links <- links %>%
-  left_join(nodes, by = c("source" = "name")) %>%
-  rename(IDsource = node) %>%
-  left_join(nodes, by = c("target" = "name")) %>%
-  rename(IDtarget = node)
-
-# Aggregate link values
-links_aggregated <- links %>%
-  group_by(IDsource, IDtarget, source, target) %>%
-  summarise(value = sum(value), .groups = "drop")
-
-# Get rid of some warnings
-links_aggregated <- as.data.frame(links_aggregated)
-nodes <- as.data.frame(nodes)
-
-# Create Sankey diagram
-sankey_diagram <- sankeyNetwork(Links = links_aggregated, 
-                                Nodes = nodes,
-                                Source = "IDsource", 
-                                Target = "IDtarget",
-                                Value = "value", 
-                                NodeID = "name",
-                                fontSize = 12,
-                                NodeGroup = "rank",
-                                nodeWidth = 30,
-                                height = 800,
-                                width = 1000,
-                                sinksRight = FALSE)
-
-# Display the diagram
-sankey_diagram
-```
-
-## Number of reads for viruses of interest
-
-```{r}
-#| label: extract-viral-taxa
-#| include: false
-
-# Get viral taxonomy
-viral_taxa_path <- file.path(data_dir, "total-virus-db.tsv.gz")
-viral_taxa <- read_tsv(viral_taxa_path, show_col_types = FALSE)
-
-# Get Kraken reports
-reports_path <- file.path(tax_final_dir, "kraken_reports.tsv.gz")
-reports <- read_tsv(reports_path, show_col_types = FALSE) %>%
-  inner_join(libraries, by="sample") %>% arrange(sample) %>% drop_na()
-
-# Filter to viral taxa
-kraken_reports_viral <- filter(reports, taxid %in% viral_taxa$taxid) %>%
-  group_by(sample) %>%
-  mutate(p_reads_viral = n_reads_clade/n_reads_clade[1])
-kraken_reports_viral_cleaned <- kraken_reports_viral %>%
-  select(-pc_reads_total, -n_reads_direct, -contains("minimizers")) %>%
-  select(name, taxid, p_reads_viral, n_reads_clade, everything()) %>% ungroup
-
-viral_classes <- kraken_reports_viral_cleaned %>% filter(rank == "C")
-viral_families <- kraken_reports_viral_cleaned %>% filter(rank == "F")
-viral_genus <- kraken_reports_viral_cleaned %>% filter(rank == "G")
-viral_species <- kraken_reports_viral_cleaned %>% filter(rank == "S")
-```
-
-We're particulary interested in the following viruses:
-
-1.  Hepatitis B
-    -   Family: Hepadnaviridae
-    -   Genus: Orthohepadnavirus
-    -   Species: Hepatitis B virus
-2.  Hepatitis C
-    -   Family: Flaviviridae
-    -   Genus: Hepacivirus
-    -   Species: Hepatitis C virus
-3.  EBV (Epstein-Barr virus)
-    -   Family: Herpesviridae
-    -   Genus: Lymphocryptovirus
-    -   Species: Human gammaherpesvirus 4
-4.  CMV (Cytomegalovirus)
-    -   Family: Herpesviridae
-    -   Genus: Cytomegalovirus
-    -   Species: Human betaherpesvirus 5
-5.  HIV-1 (Human Immunodeficiency Virus type 1)
-    -   Family: Retroviridae
-    -   Genus: Lentivirus
-    -   Species: Human immunodeficiency virus 1
-6.  Anelloviridae
-    -   Family: Anelloviridae
-
-```{r}
-#| label: family-detection
-
-#reads_post_process <- basic_stats %>% filter(stage == 'ribo_secondary') %>% 
-  #select(sample, n_read_pairs)
-
-viral_families_interest <- viral_families %>% filter(name == "Hepadnaviridae" | 
-    name ==  "Flaviviridae" | 
-    name ==  "Orthoherpesviridae" |
-    name ==  "Herpesviridae" |
-    name ==  "Retroviridae" |
-    name == "Anelloviridae") %>% group_by(name) %>% summarize(sum=sum(n_reads_clade))
-
-viral_families_interest
-
-```
-
-```{r}
-#| label: genus-detection
-
-# Species
-# Hepatitis B virus <- 10407
-# Hepatitis C virus <- 10407
-# HIV - 1 <- 11676
-
-# viral_taxa %>% filter(str_detect(tolower(name),'hepatitis') | str_detect(tolower(name),'human immunodeficiency virus') | str_detect(tolower(name),'gammaherpesvirus') | str_detect(tolower(name),'betaherpesvirus'))
-
-viral_genus_interest <- kraken_reports_viral_cleaned %>% filter(str_detect(tolower(name),'orthohepadnavirus') | str_detect(tolower(name),'hepacivirus') | str_detect(tolower(name),'lymphocryptovirus') | str_detect(tolower(name),'cytomegalovirus') | str_detect(tolower(name), 'lentivirus')) %>% group_by(name) %>% summarize(sum=sum(n_reads_clade))
-
-viral_genus_interest
-
-```
-
-```{r}
-#| label: species-detection
-
-# Species
-# Hepatitis B virus <- 10407
-# Hepatitis C virus <- 10407
-# HIV - 1 <- 11676
-
-# viral_taxa %>% filter(str_detect(tolower(name),'hepatitis') | str_detect(tolower(name),'human immunodeficiency virus') | str_detect(tolower(name),'gammaherpesvirus') | str_detect(tolower(name),'betaherpesvirus'))
-
-viral_species_interest <- kraken_reports_viral_cleaned %>% filter(str_detect(tolower(name),'hepatitis') | str_detect(tolower(name),'human immunodeficiency virus') | str_detect(tolower(name),'gammaherpesvirus') | str_detect(tolower(name),'betaherpesvirus')) %>% group_by(name) %>% summarize(sum=sum(n_reads_clade))
-
-viral_species_interest
-
-```
-
 # Human-infecting virus reads
 
 ## Overall relative abundance
@@ -790,8 +595,13 @@ I calculated the relative abundance of human-infecting viruses in two ways:
 
 -   Second, as a fraction of preprocessed (cleaned, deduplicated, computationally ribodepleted) reads ("Preprocessed reads").
 
+
+[Analyze]
+
 ```{r}
 #| label: prepare-hv
+#| include: false
+#| cache.lazy: false
 
 # Import and format reads
 hv_reads_path <- file.path(hv_dir, "hv_hits_putative_collapsed.tsv.gz")
@@ -809,6 +619,7 @@ mrg_hv <- read_tsv(hv_reads_path, show_col_types = FALSE) %>%
 #| label: count-hv-reads
 #| fig-width: 8
 #| warning: false
+ 
 # Get raw read counts
 read_counts_raw <- filter(basic_stats_raw) %>%
   select(sample, n_reads_raw = n_read_pairs)
@@ -850,14 +661,14 @@ g_read_counts <- ggplot(read_counts_agg_long, aes(x=library, y=p_reads)) +
 g_read_counts
 ```
 
-TODO do analysis above.
-
 ## Overall taxonomy and composition
 
-Composition of HV reads was not greatly changed from when looking at all viral reads. The two dominant viruses we see are Anellovirdae and Rhabdovirdae. Followed by these two viral families is Flavivirdae, and lastly, also by a much smaller percent, Microviridae.
+Composition of HV reads was not greatly changed from when looking at all viral reads. The two dominant viruses we see are Anellovirdae and Rhabdovirdae. Followed by these two viral families is Flavivirdae, and lastly, also by a much smaller percent, Microviridae. The threshold for the label "other" are the set of families that make up less than 5% composition in all samples.
 
 ```{r}
 #| label: raise-hv-taxa
+#| include: false
+ 
 # Filter samples and add viral taxa information
 samples_keep <- read_counts %>% filter(n_reads_hv > 5) %>% pull(sample)
 mrg_hv_named <- mrg_hv %>% filter(sample %in% samples_keep, hv_status) %>% left_join(viral_taxa, by="taxid") 
@@ -901,6 +712,7 @@ hv_reads_family <- raise_rank(mrg_hv_named, viral_taxa, "family")
 #| label: hv-family
 #| fig-height: 5
 #| fig-width: 7
+ 
 threshold_major_family <- 0.05
 
 # Count reads for each human-viral family
@@ -996,12 +808,11 @@ hv_family_collate <- hv_family_counts %>%
 hv_family_collate
 ```
 
+## Species analysis
 ```{r}
 #| label: hv-composition-exclusion
-#test <- hv_reads_family %>% filter(hit_hv == 1 & name %in% c('Anelloviridae', 'Flaviviridae', 'Hepeviridae', 'Microviridae', 'Rhabdoviridae')) %>% select(name, assigned_name) %>% distinct()
-#hv_reads_family %>% filter(hit_hv == 1 & name %in% c('Flaviviridae', 'Hepeviridae', 'Microviridae', 'Rhabdoviridae')) %>% select(name, assigned_name) %>% distinct()
-
-#hv_reads_family %>% filter(hit_hv == 1) %>% select(name, assigned_name) %>% distinct() %>% filter(!str_detect(tolower(assigned_name), "torque teno"))
+#| include: false
+ 
 total <- basic_stats_raw %>% select(sample, n_read_pairs)
 
 hv_family_counts <- hv_reads_family %>% 
@@ -1068,12 +879,7 @@ rename(
 
 ```{r}
 #| label: hv-filter-exclusion
-
-# Assuming the data is already loaded into tibbles:
-#hv_family_collate
-#hv_genus_collate
-#hv_species_collate
-#viral_taxa
+#| include: false
 
 # Function to find parent taxa recursively
 find_parent_taxa <- function(taxid, target_ranks, taxa_data) {
@@ -1130,10 +936,11 @@ result <- result %>%
 #result
 ```
 
+To get a good overview of families, genera, and species, we can look at a Sankey plot where the magnitude of relative abundance, averaged over all samples, is shown in parentheses.
 ```{r}
 #| label: hv-sankey
-#| width: 10
-#| height: 10
+#| fig-height: 10
+#| fig-width: 10
 
 # Function to create links
 create_links <- function(data) {
@@ -1223,6 +1030,7 @@ sankey
 #save_sankey_as_png(sankey)
 ```
 
+To get a better idea of the relative abundance of species, we can create a dot plot where each dot represents the relative abundance of a particular species in a sample.
 ```{r}
 #| label: hv-species-dot
 #| width: 20
@@ -1272,6 +1080,7 @@ ra_dot
 
 ```{r}
 #| label: hv
+#| include: false
 
 all <- hv_family_counts %>% 
 #  inner_join(basic_stats_raw, by = c('sample')) %>%
@@ -1297,120 +1106,8 @@ non_spiked
 
 ```
 
-Unsurprisingly we get a lot of Anello virus, specifically torque teno virus. Once I filter those out we get a few interesting viruses: - Rhabdovirus - [Vesiculovirus](https://en.wikipedia.org/wiki/Vesiculovirus) - [Vesicular stomatitis Indiana virus](https://en.wikipedia.org/wiki/Indiana_vesiculovirus) - [Maraba virus](https://en.wikipedia.org/wiki/Oncolytic_virus) - Flavivirus - Pegivirus - [GB virus C](https://en.wikipedia.org/wiki/GB_virus_C)
-
-TODO look in to this.
-
-# Swab sampling esk analysis
-
-```{r}
-library(stats)
-
-simon <- hv_family_counts %>% 
-  filter(name == 'Anelloviridae') %>% 
-  ungroup() %>%
-  mutate(dataset='Cebria-Mendoza', ra=ra_reads_hv) %>%
-  select(ra_reads_hv, dataset)  %>% pull(ra_reads_hv)
-
-get_logit_normal_samples <- function(ras) {
-  ra_values <- ras %>% pull(1)  # Assuming the values are in the first column
-  zero_share <- mean(ra_values == 0)
-  ra_values <- ra_values[ra_values != 0]
-  
-  logit_ra_values <- qlogis(ra_values)
-  mean_val <- mean(logit_ra_values)
-  std_val <- sd(logit_ra_values)
-  
-  non_zero_samples <- rnorm(n = floor(100000 * (1 - zero_share)), mean = mean_val, sd = std_val)
-  samples <- plogis(non_zero_samples)
-  
-  zero_samples <- rep(0, floor(100000 * zero_share))
-  all_samples <- c(samples, zero_samples)
-  
-  tibble(samples = sample(all_samples))
-}
-
-simulate_p2ra <- function(sample_pop, ra_lists, prevalence) {
-  n_sick <- rpois(1, sample_pop * prevalence)
-  if (n_sick == 0) {
-    return(0)
-  }
-  
-  cumulative_ra_sick <- sum(sample(unlist(ra_lists), size = n_sick, replace = TRUE))
-  individual_ra_sick <- cumulative_ra_sick / n_sick
-  relative_abundance <- n_sick / sample_pop * individual_ra_sick
-  
-  return(relative_abundance)
-}
-
-simulate_p2ra_many <- function(ra_lists, sample_populations, n_simulations) {
-  prevalence <- get_prevalence()  # Assuming this function exists in your R environment
-  
-  results <- sample_populations %>%
-    set_names() %>%
-    map(~ replicate(n_simulations, simulate_p2ra(.x, ra_lists, prevalence))) %>%
-    map(sort)
-  
-  as_tibble(results)
-}
-
-get_prevalence <- function(){
-  prevelance = 0.01
-}
-
-get_swab_p2ra <- function(subset_titles, ra_lists, swab_sample_sizes = DEFAULT_SWAB_SAMPLE_SIZES) {
-  df_swab <- subset_titles %>%
-    set_names() %>%
-    map2_dfr(ra_lists, function(subset, ras) {
-      samples <- get_logit_normal_samples(tibble(ras))
-      
-      simulate_p2ra_many(samples$samples, swab_sample_sizes, n_simulations = 10000) %>%
-        mutate(Subset = subset) %>%
-        pivot_longer(
-          cols = -Subset,
-          names_to = "Sample Size",
-          values_to = "Relative Abundance"
-        )
-    })
-  
-  return(df_swab)
-}
-
-DEFAULT_SWAB_SAMPLE_SIZES <- subset_titles <- c("Cebria-Mendoza")
-ra_lists <- list(simon)
-DEFAULT_SWAB_SAMPLE_SIZES <- c(100, 200, 400)
-
-result <- get_swab_p2ra(subset_titles, ra_lists)
-
-
-
-```
-
-```{r}
-library(forcats)
-library(scales)
-
-result$`Sample Size` <- factor(result$`Sample Size`, levels=c('100','200','400'))
-df_swab <- result %>%
-    filter(`Relative Abundance` > 0) %>%
-    mutate(Subset = fct_reorder(Subset, `Relative Abundance`, .fun = median))
-  
-  # Create the plot
-ggplot(df_swab, aes(x = `Relative Abundance`, y = Subset, fill = `Sample Size`)) +
-  geom_violin(scale = "width", trim = FALSE, alpha = 0.7, draw_quantiles = c(0.5)) +
-  scale_x_log10("Relative abundance") +
-  scale_fill_brewer(palette = "Blues") +
-  theme_light() +
-  labs(
-  title = "Expected relative abundance at 1% prevelance of Anelloviridae",
-  x = "Relative Abundance",
-  y = ""
-  ) 
-
-```
+I'd like to BLAST some of these reads against the NCBI nt database to see if we can get some more info on them.
 
 # Conclusion
 
-Overall, nothing dangerous was found in the blood, which is totally expected.
-
-My biggest concern is that I'm incompetent and don't know how to analyze the data at this point which is expected. Let me try uploading this to my notebook and then reevaluate from there.
+Overall, we found a lot of anelloviridae, which makes sense given that this paper is about discovering new species of anelloviridae in blood.
