@@ -26,7 +26,7 @@ format:
         href: https://github.com/naobservatory/harmons-public-notebook/blob/main/notebooks/2024-07-23-mengyi.qmd
 editor:
   visual: true # visual editor
-  render-on-save: true # render on save
+#  render-on-save: true # render on save
 comments:
   hypothesis: true # hypothesis
 execute: 
