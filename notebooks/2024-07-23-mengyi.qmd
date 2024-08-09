@@ -29,9 +29,9 @@ editor: visual
 #  render-on-save: true # render on save
 comments:
   hypothesis: true # hypothesis
-execute: 
-  freeze: auto
-  cache: true
+#execute: 
+#  freeze: auto
+#  cache: true
 title-block-banner: "#de2d26"
 ---
 
