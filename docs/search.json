@@ -172,7 +172,7 @@
     "href": "notebooks/2024-07-23-mengyi.html",
     "title": "Workflow of Mengyi et al. (2023)",
     "section": "",
-    "text": "I’d like to thank Lenni for giving me feedback on this and Will for providing me with access to this rmarkdown file.\nThis one of the studies that we hope to discuss in our third blog post, which will cover the metagenomic analysis of whole blood/plasma. In this notebook, I analyze Mengyi 2023, a dataset from China with 200 pools of plasma, where each pool contains 160 samples from 7 different locations, for a total of 10,720 samples."
+    "text": "This one of the studies that we hope to discuss in our third blog post, which will cover the metagenomic analysis of whole blood/plasma. In this notebook, I analyze Mengyi 2023, a dataset from China with 200 pools of plasma, where each pool contains 160 samples from 7 different locations, for a total of 10,720 samples.\nI’d like to thank Lenni for giving me feedback on this and Will for providing me with access to this rmarkdown file."
   },
   {
     "objectID": "notebooks/2024-07-23-mengyi.html#high-level-metrics",

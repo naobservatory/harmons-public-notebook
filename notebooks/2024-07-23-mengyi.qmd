@@ -24,8 +24,8 @@ format:
       - text: Code for this post
         icon: file-code
         href: https://github.com/naobservatory/harmons-public-notebook/blob/main/notebooks/2024-07-23-mengyi.qmd
-editor:
-  visual: true # visual editor
+editor: visual
+#  visual: true # visual editor
 #  render-on-save: true # render on save
 comments:
   hypothesis: true # hypothesis
@@ -61,9 +61,9 @@ theme_kit <- theme_base + theme(
 tnl <- theme(legend.position = "none")
 ```
 
-*I'd like to thank Lenni for giving me feedback on this and Will for providing me with access to this rmarkdown file.*
-
 This one of the studies that we hope to discuss in [our third blog post](https://naobservatory.org/blog/exploring-blood-biosurveillance-part1), which will cover the metagenomic analysis of whole blood/plasma. In this notebook, I analyze [Mengyi 2023](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC10372899/), a dataset from China with 200 pools of **plasma**, where each pool contains 160 samples from 7 different locations, for a total of 10,720 samples. 
+
+*I'd like to thank Lenni for giving me feedback on this and Will for providing me with access to this rmarkdown file.*
 
 # Raw data
 

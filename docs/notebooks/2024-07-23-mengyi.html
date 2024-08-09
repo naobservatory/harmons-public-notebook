@@ -221,8 +221,8 @@ window.Quarto = {
   </ul><div class="quarto-other-links"><h2>Other Links</h2><ul><li><a href="https://www.ncbi.nlm.nih.gov/pmc/articles/PMC10372899/"><i class="bi bi-link-45deg"></i>Paper</a></li><li><a href="https://bigd.big.ac.cn/gsa/browse/CRA006191"><i class="bi bi-link-45deg"></i>Data</a></li></ul></div><div class="quarto-code-links"><h2>Code Links</h2><ul><li><a href="https://github.com/naobservatory/harmons-public-notebook/blob/main/notebooks/2024-07-23-mengyi.qmd"><i class="bi bi-file-code"></i>Code for this post</a></li></ul></div></nav>
     </div>
 <!-- main -->
-<main class="content quarto-banner-title-block page-columns page-full column-page-left" id="quarto-document-content"><p><em>I’d like to thank Lenni for giving me feedback on this and Will for providing me with access to this rmarkdown file.</em></p>
-<p>This one of the studies that we hope to discuss in <a href="https://naobservatory.org/blog/exploring-blood-biosurveillance-part1">our third blog post</a>, which will cover the metagenomic analysis of whole blood/plasma. In this notebook, I analyze <a href="https://www.ncbi.nlm.nih.gov/pmc/articles/PMC10372899/">Mengyi 2023</a>, a dataset from China with 200 pools of <strong>plasma</strong>, where each pool contains 160 samples from 7 different locations, for a total of 10,720 samples.</p>
+<main class="content quarto-banner-title-block page-columns page-full column-page-left" id="quarto-document-content"><p>This one of the studies that we hope to discuss in <a href="https://naobservatory.org/blog/exploring-blood-biosurveillance-part1">our third blog post</a>, which will cover the metagenomic analysis of whole blood/plasma. In this notebook, I analyze <a href="https://www.ncbi.nlm.nih.gov/pmc/articles/PMC10372899/">Mengyi 2023</a>, a dataset from China with 200 pools of <strong>plasma</strong>, where each pool contains 160 samples from 7 different locations, for a total of 10,720 samples.</p>
+<p><em>I’d like to thank Lenni for giving me feedback on this and Will for providing me with access to this rmarkdown file.</em></p>
 <section id="raw-data" class="level1" data-number="1"><h1 data-number="1">
 <span class="header-section-number">1</span> Raw data</h1>
 <section id="about" class="level2" data-number="1.1"><h2 data-number="1.1" class="anchored" data-anchor-id="about">
@@ -1688,8 +1688,8 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 <span id="cb27-24"><a href="#cb27-24" aria-hidden="true" tabindex="-1"></a><span class="co">      - text: Code for this post</span></span>
 <span id="cb27-25"><a href="#cb27-25" aria-hidden="true" tabindex="-1"></a><span class="co">        icon: file-code</span></span>
 <span id="cb27-26"><a href="#cb27-26" aria-hidden="true" tabindex="-1"></a><span class="co">        href: https://github.com/naobservatory/harmons-public-notebook/blob/main/notebooks/2024-07-23-mengyi.qmd</span></span>
-<span id="cb27-27"><a href="#cb27-27" aria-hidden="true" tabindex="-1"></a><span class="an">editor:</span></span>
-<span id="cb27-28"><a href="#cb27-28" aria-hidden="true" tabindex="-1"></a><span class="co">  visual: true # visual editor</span></span>
+<span id="cb27-27"><a href="#cb27-27" aria-hidden="true" tabindex="-1"></a><span class="an">editor:</span><span class="co"> visual</span></span>
+<span id="cb27-28"><a href="#cb27-28" aria-hidden="true" tabindex="-1"></a><span class="co">#  visual: true # visual editor</span></span>
 <span id="cb27-29"><a href="#cb27-29" aria-hidden="true" tabindex="-1"></a><span class="co">#  render-on-save: true # render on save</span></span>
 <span id="cb27-30"><a href="#cb27-30" aria-hidden="true" tabindex="-1"></a><span class="an">comments:</span></span>
 <span id="cb27-31"><a href="#cb27-31" aria-hidden="true" tabindex="-1"></a><span class="co">  hypothesis: true # hypothesis</span></span>
@@ -1725,9 +1725,9 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 <span id="cb27-63"><a href="#cb27-63" aria-hidden="true" tabindex="-1"></a>tnl <span class="ot">&lt;-</span> <span class="fu">theme</span>(<span class="at">legend.position =</span> <span class="st">"none"</span>)</span>
 <span id="cb27-64"><a href="#cb27-64" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb27-65"><a href="#cb27-65" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb27-66"><a href="#cb27-66" aria-hidden="true" tabindex="-1"></a>*I'd like to thank Lenni for giving me feedback on this and Will for providing me with access to this rmarkdown file.*</span>
+<span id="cb27-66"><a href="#cb27-66" aria-hidden="true" tabindex="-1"></a>This one of the studies that we hope to discuss in <span class="co">[</span><span class="ot">our third blog post</span><span class="co">](https://naobservatory.org/blog/exploring-blood-biosurveillance-part1)</span>, which will cover the metagenomic analysis of whole blood/plasma. In this notebook, I analyze <span class="co">[</span><span class="ot">Mengyi 2023</span><span class="co">](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC10372899/)</span>, a dataset from China with 200 pools of **plasma**, where each pool contains 160 samples from 7 different locations, for a total of 10,720 samples. </span>
 <span id="cb27-67"><a href="#cb27-67" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb27-68"><a href="#cb27-68" aria-hidden="true" tabindex="-1"></a>This one of the studies that we hope to discuss in <span class="co">[</span><span class="ot">our third blog post</span><span class="co">](https://naobservatory.org/blog/exploring-blood-biosurveillance-part1)</span>, which will cover the metagenomic analysis of whole blood/plasma. In this notebook, I analyze <span class="co">[</span><span class="ot">Mengyi 2023</span><span class="co">](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC10372899/)</span>, a dataset from China with 200 pools of **plasma**, where each pool contains 160 samples from 7 different locations, for a total of 10,720 samples. </span>
+<span id="cb27-68"><a href="#cb27-68" aria-hidden="true" tabindex="-1"></a>*I'd like to thank Lenni for giving me feedback on this and Will for providing me with access to this rmarkdown file.*</span>
 <span id="cb27-69"><a href="#cb27-69" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb27-70"><a href="#cb27-70" aria-hidden="true" tabindex="-1"></a><span class="fu"># Raw data</span></span>
 <span id="cb27-71"><a href="#cb27-71" aria-hidden="true" tabindex="-1"></a></span>
