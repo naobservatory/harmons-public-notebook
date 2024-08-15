@@ -24,14 +24,14 @@ format:
       - text: Code for this post
         icon: file-code
         href: https://github.com/naobservatory/harmons-public-notebook/blob/main/notebooks/2024-07-23-mengyi.qmd
-editor: visual
-#  visual: true # visual editor
-#  render-on-save: true # render on save
+editor:
+  visual: true # visual editor
+  render-on-save: true # render on save
 comments:
   hypothesis: true # hypothesis
-#execute: 
-#  freeze: auto
-#  cache: true
+execute: 
+  freeze: auto
+  cache: true
 title-block-banner: "#de2d26"
 ---
 
@@ -51,6 +51,7 @@ library(latex2exp)
 library(forcats)
 library(scales)
 library(ggpubr)
+library(ggbeeswarm)
 
 source("/Users/harmonbhasin/work/securebio/sampling-strategies/scripts/aux_plot-theme.R")
 theme_base <- theme_base + theme(aspect.ratio = NULL)
@@ -60,31 +61,6 @@ theme_kit <- theme_base + theme(
 )
 tnl <- theme(legend.position = "none")
 ```
-
-This one of the studies that we hope to discuss in [our third blog post](https://naobservatory.org/blog/exploring-blood-biosurveillance-part1), which will cover the metagenomic analysis of whole blood/plasma. In this notebook, I analyze [Mengyi 2023](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC10372899/), a dataset from China with 200 pools of **plasma**, where each pool contains 160 samples from 7 different locations, for a total of 10,720 samples. 
-
-*I'd like to thank Lenni for giving me feedback on this and Will for providing me with access to this rmarkdown file.*
-
-# Raw data
-
-## About 
-
-[This dataset](https://bigd.big.ac.cn/gsa/browse/CRA006191) from China has 200 pools of plasma, where each pool contains 160 samples from 7 different locations between 2012-2018, for a total of 10,720 samples. This paper did not discuss the number of individuals that contributed to the samples, but we're going to attempt to contact the authors to get this information (this shouldn't hold up any further analysis, but would be good to have this information). They did DNA sequencing for each pool, with 150 base pair paired-end sequencing (2x150 bp).
-
-### Sample + library preparation
-The following excerpt from the paper describes the sample and library preparation process. It's crucial to note that while blood samples were initially collected from volunteers, these samples were converted to plasma through ultracentrifugation prior to sequencing:
-
-> From January 1, 2012, to December 31, 2018, a total of 10,720 blood samples of 10 ml each were randomly selected from voluntary blood donors in 7 regions. The blood samples taken from various places were mixed in units of 160 (each 100 μl) for ultracentrifugation (32,000 rpm, 120 min, maximum centrifugal radius of 91.9 mm). Afterward, we rinsed and resuspended the precipitate with 500 μl PBS.
->
-> The pooled suspensions were subjected to extraction of total DNA using QIAamp® DNA Blood mini Kit (QIAGEN Cat. NO.160019269, Frankfurt, Germany), DNA concentration was measured by Equalbit® 1 × dsDNA HS Assay Kit (Vazyme Cat. NO. 7E302K9, Nanjing, China).
->
-> The metagenomic library was constructed using KAPA HyperPlus Kit (KAPA Cat. NO. 0000097583, Boston, USA) with dual-indexed Adapters (KAPA Cat. NO. 0000093370, Boston, USA), the DNA was fragmented to 250 bp approximately by the enzyme at 37 °C for 20 min, after end repair and A-tailing, adapter ligation, post-ligation cleanup, library amplification, and post-amplification cleanup, the library was constructed.
->
-> Agilent 2100 Bioanalyzer (Agilent Technologies, Beijing, China) was used for library quality control, and qualified DNA library was sent to the Novogene company to sequence in HiSeq 4500.
-
-## Quality control metrics
-
-In total, these 200 samples contained 3.4B read pairs. The samples had 8.2M - 30.1M (mean 17.1M) read pairs each.
 
 ```{r}
 #| warning: false
@@ -105,10 +81,19 @@ quality_seq_stats_path <- file.path(qc_dir, "qc_quality_sequence_stats.tsv.gz")
 ```
 
 
+
+This one of the studies that we hope to discuss in [our third blog post](https://naobservatory.org/blog/exploring-blood-biosurveillance-part1), which will cover the metagenomic analysis of whole blood/plasma. In this notebook, I analyze [Mengyi 2023](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC10372899/), a dataset from China with 201 pools of **plasma**, where each pool contains 160 samples (we don't know whether 1 sample = 1 donation) from 7 different locations, for a total of 10,720 samples. 
+
+*I'd like to thank Lenni for giving me feedback on the notebook, Will for providing me with a boilerplate rmarkdown file, and Simon for giving me feedback on my figures. This notebook uses the MGS Workflow v2.2.1 (note that this is old).*
+
+# Raw data
+
+## About 
+
+[This dataset](https://bigd.big.ac.cn/gsa/browse/CRA006191) from China has 201 pools of plasma, where each pool contains 160 samples from 7 different locations between 2012-2018, for a total of 10,720 samples. This paper did not discuss the number of individuals that contributed to the samples, but we're going to attempt to contact the authors to get this information (this shouldn't hold up any further analysis, but would be good to have this information). They did DNA-sequencing for each pool, with Illumina HiSeq 4500, producing 2x150 bp reads.
+
 ```{r}
-#| warning: false
-#| label: read-qc-data
-#| include: false
+#| label: load-libraries
 
 # Import libraries and extract metadata from sample names
 libraries <- read_csv(libraries_path, show_col_types = FALSE)
@@ -119,6 +104,27 @@ libraries <- libraries %>%
   left_join(metadata, by = 'sample') %>%
   select(sample, library=library.y, location) %>%
   mutate(library = factor(library))
+
+libraries %>% group_by(location) %>% summarize(n_pools = n())
+```
+
+### Sample + library preparation
+The following excerpt from the paper describes the sample and library preparation process. It's crucial to note that while blood samples were initially collected from volunteers, these samples were converted to plasma through ultracentrifugation prior to sequencing:
+
+> From January 1, 2012, to December 31, 2018, a total of 10,720 blood samples of 10 ml each were randomly selected from voluntary blood donors in 7 regions. The blood samples taken from various places were mixed in units of 160 (each 100 μl) for ultracentrifugation (32,000 rpm, 120 min, maximum centrifugal radius of 91.9 mm). Afterward, we rinsed and resuspended the precipitate with 500 μl PBS.
+>
+> The pooled suspensions were subjected to extraction of total DNA using QIAamp® DNA Blood mini Kit (QIAGEN Cat. NO.160019269, Frankfurt, Germany), DNA concentration was measured by Equalbit® 1 × dsDNA HS Assay Kit (Vazyme Cat. NO. 7E302K9, Nanjing, China).
+>
+> The metagenomic library was constructed using KAPA HyperPlus Kit (KAPA Cat. NO. 0000097583, Boston, USA) with dual-indexed Adapters (KAPA Cat. NO. 0000093370, Boston, USA), the DNA was fragmented to 250 bp approximately by the enzyme at 37 °C for 20 min, after end repair and A-tailing, adapter ligation, post-ligation cleanup, library amplification, and post-amplification cleanup, the library was constructed.
+>
+> Agilent 2100 Bioanalyzer (Agilent Technologies, Beijing, China) was used for library quality control, and qualified DNA library was sent to the Novogene company to sequence in HiSeq 4500.
+
+## Quality control metrics
+
+```{r}
+#| warning: false
+#| label: read-qc-data
+#| include: false
 
 # Import QC data
 stages <- c("raw_concat", "cleaned", "dedup", "ribo_initial", "ribo_secondary")
@@ -158,7 +164,8 @@ raw_read_counts <- basic_stats_raw %>%
              dmean=mean(percent_duplicates), .groups = "drop")
 ```
 
-Number of read pairs, total bases and % of duplicates all look good.
+
+These 201 samples contained 3.4B read pairs. The samples had 8.2M - 30.1M (mean 17.1M) read pairs each. The number of read pairs and total bases look relatively evenly distributed across the locations. The duplication rate is also quite low, around ~10%. Adapter content is low. As we'd expect, we see higher quality Q scores near the beginning of the read and a gradual decline towards the end of the read, however all positions seem to have a Q score of 35 which means that our reads are \~99.97% accurate. When looking at the Q score over all sequences, we can see a sharp peak after 35, which closely follows the previous plot, indicating high read quality.
 
 ```{r}
 #| fig-width: 15
@@ -187,12 +194,13 @@ g_basic <- ggplot(basic_stats_raw_metrics, aes(x = library, y = value, fill=loca
   facet_grid(metric ~ ., scales = "free", space = "free_x", switch = "y") +
   theme_kit + theme(
     axis.title.y = element_blank(),
-    strip.text.y = element_text(face = "plain")
+    strip.text.y = element_text(face = "plain"),
+    axis.text.x = element_blank()
   )
 g_basic
 ```
 
-Adapter content is low. As we'd expect, we see higher quality Q scores near the beginning of the read and a gradual decline towards the end of the read, however all positions seem to have a Q score of 35 which means that our reads are \~99.97% accurate. When looking at the Q score over all sequences, we can see a sharp peak after 35, which closely follows the previous plot, indicating high read quality.
+
 
 ```{r}
 #| label: plot-raw-quality
@@ -201,8 +209,9 @@ Adapter content is low. As we'd expect, we see higher quality Q scores near the 
 
 
 # Set up plotting templates
-g_qual_raw <- ggplot(mapping=aes(linetype=read_pair, group=interaction(sample,read_pair))) + 
+g_qual_raw <- ggplot(mapping=aes(color = location, linetype=read_pair, group=interaction(sample,read_pair))) + 
   scale_linetype_discrete(name = "Read Pair") +
+  scale_color_brewer(palette = "Dark2") +
   guides(color=guide_legend(nrow=2,byrow=TRUE),
          linetype = guide_legend(nrow=2,byrow=TRUE)) +
   theme_base
@@ -240,7 +249,7 @@ g_quality_seq_raw
 
 ## Summary
 
-The average fraction of reads at each stage in the preprocessing pipeline is shown in the following table. Reads lost during trimming and filtering approximately matches what we'd expect based on the raw adapter content. Deduplication loses us about 10% of reads which matched the amount of estimated duplicated reads by QC. Low ribodepletion is observed which makes sense because they only sequneced DNA.
+The average fraction of reads at each stage in the preprocessing pipeline is shown in the following table. Reads lost during trimming and filtering approximately matches what we'd expect based on the raw adapter content. Deduplication loses us about 10% of reads which matched the amount of estimated duplicated reads by QC. Low ribodepletion is observed which makes sense because they only sequenced DNA.
 
 ```{r}
 #| label: preproc-table
@@ -248,7 +257,7 @@ The average fraction of reads at each stage in the preprocessing pipeline is sho
 # TODO: Group by pool size as well
 # Count read losses
 n_reads_rel <- basic_stats %>% 
-  select(sample, stage, percent_duplicates, n_read_pairs) %>%
+  select(sample,location, stage, percent_duplicates, n_read_pairs) %>%
   group_by(sample) %>% 
   arrange(sample, stage) %>%
   mutate(p_reads_retained = n_read_pairs / lag(n_read_pairs),
@@ -268,9 +277,7 @@ n_reads_rel_display
 
 ## Quality control metrics
 
-These plots below show the trends from above in each sample.
-
-Trimming and cleaning gets rid of Illumnia unviersal adapter as well as polyg, and we see a decrease in polya. Q score remain the same during read cleaning when looking at the positions, with the end of the read actually improving in score. Q scores across all sequences look pretty much the same throughout cleaning.
+Trimming and cleaning gets rid of the Illumina adapter as well as polyg, and we see a decrease in polya. Q score remain the same during read cleaning when looking at the positions, with the end of the read actually improving in score. Q scores across all sequences look pretty much the same throughout cleaning.
 
 ```{r}
 #| warning: false
@@ -278,8 +285,9 @@ Trimming and cleaning gets rid of Illumnia unviersal adapter as well as polyg, a
 #| fig-width: 15
 #| fig-height: 10
 
-g_qual <- ggplot(mapping=aes(linetype=read_pair, group=interaction(sample,read_pair))) + 
+g_qual <- ggplot(mapping=aes(color = location, linetype=read_pair, group=interaction(sample,read_pair))) + 
   scale_linetype_discrete(name = "Read Pair") +
+  scale_color_brewer(palette = "Dark2") +
   guides(color=guide_legend(nrow=2,byrow=TRUE),
          linetype = guide_legend(nrow=2,byrow=TRUE)) +
   theme_base
@@ -315,6 +323,8 @@ g_quality_seq <- g_qual +
 g_quality_seq
 ```
 
+Number of read pairs look reasonable, same with a large portion being lost during deduplication. At the end of deduplication it seems that only 5% of reads are duplicates which doesn't seem too bad. Mean read length stays around 150 bp which is pretty good.
+
 ```{r}
 #| label: preproc-figures
 #| warning: false
@@ -322,9 +332,9 @@ g_quality_seq
 #| fig-height: 10
 
 
-g_stage_trace <- ggplot(basic_stats, aes(x=stage, group=sample)) +
-  theme_kit
-
+g_stage_trace <- ggplot(basic_stats, aes(x=stage, group=sample, color = location)) +
+  theme_kit +
+  scale_color_brewer(palette = "Dark2")
 # Plot reads over preprocessing
 g_reads_stages <- g_stage_trace +
   geom_line(aes(y=n_read_pairs)) +
@@ -333,15 +343,14 @@ g_reads_stages
 
 # Plot relative read losses during preprocessing
 g_reads_rel <- ggplot(n_reads_rel, 
-                      aes(x=stage, group=sample)) +
+                      aes(x=stage, group=sample, color = location)) +
   geom_line(aes(y=p_reads_lost_abs_marginal)) +
   scale_y_continuous("% Total Reads Lost", expand=c(0,0), 
                      labels = function(x) x*100) +
+  scale_color_brewer(palette = "Dark2") +
   theme_kit
 g_reads_rel
 ```
-
-All samples tend to follow similar trends for deduplication, with a large decrease in read length post adapter trimming.
 
 ```{r}
 #| label: preproc-dedup
@@ -370,36 +379,6 @@ g_readlen_stages <- g_stage_trace + geom_line(aes(y=mean_seq_len)) +
 g_readlen_stages
 ```
 
-
-As expected, ribosomal reads are near 0% for every sample.
-
-```{r}
-#| label: ribo-frac
-#| fig-width: 15
-#| fig-height: 10
-#| fig-cap: "Ribodepletion aims to get rid of ribosomal RNA, so we don't expect DNA sequencing to have this."
-#| cap-location: margin 
-
-# Calculate reads lost during ribodepletion (approximation for % ribosomal reads)
-reads_ribo <- n_reads_rel %>% 
-  filter(stage %in% c("dedup", "ribo_secondary")) %>% 
-  group_by(sample) %>% 
-  summarize(p_reads_ribo=1-n_read_pairs[2]/n_read_pairs[1], .groups = "drop") %>%
-  inner_join(libraries, by = 'sample')
-reads_ribo_summ <- reads_ribo %>%
-  group_by(sample) %>%
-  summarize(min=min(p_reads_ribo), max=max(p_reads_ribo),
-            mean=mean(p_reads_ribo), .groups = "drop") %>%
-  inner_join(libraries, by = 'sample')
-g_reads_ribo <- ggplot(reads_ribo, 
-                       aes(x=library, y=p_reads_ribo)) +
-  geom_point() + 
-  scale_y_continuous(name="Approx % ribosomal reads", limits=c(0,1),
-                     breaks=seq(0,1,0.2), expand=c(0,0), labels = function(y) y*100)+
-  theme_kit
-g_reads_ribo
-```
-
 # Taxonomic composition
 
 ## High-level composition
@@ -417,22 +396,20 @@ The groups listed below were created by Will:
 * Viral (non-ribosomal reads assigned to the Viruses domain by Kraken/Bracken)
 * Human (non-ribosomal reads assigned to the Eukarya domain by Kraken/Bracken)
 
-Additionally, there are two groups:
-
-- All groups (all of the categories above)
-- Minor groups (Archeal, Viral, Human, Other)
+Human reads make up a large proportion of all reads at 82% total composition, whereas viruses only account for 0.01% of all reads.
 
 ```{r}
 #| label: prepare-composition
-#| include: false
+#| warning: false
 
 classifications <- c("Filtered", "Duplicate", "Ribosomal", "Unassigned",
                      "Bacterial", "Archaeal", "Viral", "Human")
 
 # Import composition data
 tax_final_dir <- file.path(results_dir, "taxonomy_final")
-comp_path <- file.path(tax_final_dir, "taxonomic_composition.tsv.gz")
-comp <- read_tsv(comp_path) %>% left_join(libraries) 
+comp <- read_tsv(sprintf("%s/taxonomic_composition.tsv.gz", tax_final_dir)) %>% 
+  inner_join(libraries, by='sample')
+
 comp_minor <- comp %>% 
   filter(classification %in% c("Archaeal", "Viral", "Human", "Other"))
 comp_assigned <- comp %>%
@@ -450,7 +427,11 @@ read_comp_summ <- comp %>%
   mutate(n_reads = replace_na(n_reads,0),
          p_reads = n_reads/sum(n_reads),
          pc_reads = p_reads*100) %>%
-  mutate(classification = factor(classification, levels=classifications))
+  mutate(classification = factor(classification, levels=classifications)) %>%
+  select(classification, n_reads, pc_reads) %>%
+  rename(`# of reads` = n_reads, "% of reads" = pc_reads) %>%
+  mutate(`% of reads` = sprintf("%.2f", `% of reads`))
+read_comp_summ
 ```
 
 ```{r}
@@ -462,15 +443,16 @@ read_comp_summ <- comp %>%
 g_comp_base <- ggplot(mapping=aes(x=library, y=p_reads, fill=classification)) +
   scale_x_discrete(name="Plasma pool") +
   theme_kit + 
-  theme(plot.title = element_text(hjust=0, face="plain", size=rel(1.5)))
+  theme(plot.title = element_text(hjust=0, face="plain", size=rel(1.5)),
+        axis.text.x = element_blank())
+
 scale_y_pc_reads <- purrr::partial(scale_y_continuous, name = "% Reads",
                                    expand = c(0,0), labels = function(y) y*100)
 geom_comp <- purrr::partial(geom_col, position = "stack", width = 1)
 
+# Define a color palette for the classification
 classification_colors <- brewer.pal(8, "Accent")
 names(classification_colors) <- c("Filtered", "Duplicate", "Ribosomal", "Unassigned", "Bacterial", "Archaeal", "Viral", "Human")
-
-# Update the scale_fill_manual function to use the named vector
 scale_fill_classification <- function() {
   scale_fill_manual(values = classification_colors, name = "Classification")
 }
@@ -482,6 +464,19 @@ g_comp <- g_comp_base + geom_comp(data = comp) +
   ggtitle("Read composition (all reads, all groups)")
 g_comp
 
+# Create a faceted plot of composition by location
+#g_comp_by_location <- g_comp_base +
+#  geom_comp(data = comp) +
+#  scale_y_pc_reads(limits = c(0,1.01), breaks = seq(0,1,0.2)) +
+#  scale_fill_classification() +
+#  facet_wrap(~ location, scales = "free_x", ncol = 2) +
+#  theme(axis.text.x = element_blank(),  # Remove x-axis labels
+#        axis.ticks.x = element_blank()) +  # Remove x-axis ticks
+#  ggtitle("Read composition (all reads, all groups)")
+
+# Display the plot
+#g_comp_by_location
+
 # Repeat for classified reads only
 g_comp_assigned <- g_comp_base + 
   geom_comp(data = comp_assigned) +
@@ -491,51 +486,107 @@ g_comp_assigned <- g_comp_base +
 g_comp_assigned
 
 # Plot composition of minor components
-g_comp_minor <- g_comp_base + 
-  geom_comp(data=comp_minor) +
-  scale_y_pc_reads() +
-  scale_fill_classification() + 
-  ggtitle("Read composition (all reads, minor groups)")
-g_comp_minor
-g_comp_assigned_minor <- g_comp_base + 
-  geom_comp(data=comp_assigned_minor) +
-  scale_y_pc_reads() +
-  scale_fill_classification() + 
-  ggtitle("Read composition (assigned reads, minor groups)")
-g_comp_assigned_minor
+#g_comp_minor <- g_comp_base + 
+#  geom_comp(data=comp_minor) +
+#  scale_y_pc_reads() +
+#  scale_fill_classification() + 
+#  ggtitle("Read composition (all reads, minor groups)")
+#g_comp_minor
+#g_comp_assigned_minor <- g_comp_base + 
+#  geom_comp(data=comp_assigned_minor) +
+#  scale_y_pc_reads() +
+#  scale_fill_classification() + 
+#  ggtitle("Read composition (assigned reads, minor groups)")
+#g_comp_assigned_minor
 ```
 
 ## Total viral content
 
-Total viral fraction average $1.03 \times 10^{-4}$ across samples. As a fraction of assigned (rather than total) reads, this jumped to $1.28 \times 10^{-4}$:
+Total viral fraction average $1.03 \times 10^{-4}$ across samples. As a fraction of assigned (rather than total) reads, this jumped to $1.28 \times 10^{-4}$. The increase in viral fraction from assigned reads to total reads was constant across all samples, however, we can see that the viral fractions differed by location. Note that one of the pools from "Heilongjiang,Mudanjiang" had no viral reads.
 
 ```{r}
 #| label: p-viral-scatter
 #| fig-width: 10
 #| fig-height: 15
+#| warning: false
 
-p_reads_viral_all <- comp %>% filter(classification == "Viral") %>%
-  mutate(read_group = "All reads")
+#p_reads_viral_all <- comp %>% filter(classification == "Viral") %>%
+#  mutate(read_group = "All reads")
 p_reads_viral_assigned <- comp_assigned %>% filter(classification == "Viral") %>%
   mutate(read_group = "Classified reads")
-p_reads_viral <- bind_rows(p_reads_viral_all, p_reads_viral_assigned)
+#p_reads_viral <- bind_rows(p_reads_viral_all, p_reads_viral_assigned)
+
+location_viral <- comp_assigned %>% filter(classification == "Viral" ) %>% group_by(location) 
 
 # Plot
-g_viral <- ggplot(p_reads_viral, aes(x=p_reads, y=library, color=location, shape=read_group)) +
-  geom_point() +
-  scale_y_discrete(name="Plasma pool") +
-  scale_x_log10(name="Viral read fraction") +
-  scale_color_brewer(palette = "Dark2") +
-  #facet_grid(.~read_group, scales = "free") +
-  guides(color=guide_legend(nrow=2), shape=guide_legend(nrow=2),
-         linetype=guide_legend(nrow=2)) +
-  theme_kit
+# g_viral <- ggplot(p_reads_viral, aes(x=p_reads, y=library, color=location, shape=read_group)) +
+#   geom_point() +
+#   scale_y_discrete(name="Plasma pool") +
+#   scale_x_log10(name="Viral read fraction") +
+#   scale_color_brewer(palette = "Dark2") +
+#   #facet_grid(.~read_group, scales = "free") +
+#   guides(color=guide_legend(nrow=2), shape=guide_legend(nrow=2),
+#          linetype=guide_legend(nrow=2)) +
+#   theme_kit
+
+#ggplot(location_viral, aes(x=p_reads, y=location, color = location)) +
+#  geom_quasirandom(size=2) +
+#  scale_x_log10(name="Viral read fraction", labels = label_log(digits=2)) +
+#  scale_y_discrete(name="Location") +
+#  scale_color_brewer(palette = "Dark2") +
+#  theme_light() + 
+#    theme(
+#    axis.text.y = element_text(size = 8),
+#    axis.text.x = element_text(size = 14),
+#    axis.ticks.y = element_blank(),
+#    axis.line = element_line(colour = "black"),
+#    axis.title.x = element_text(size = 15),    
+#    axis.title.y = element_text(size = 15),  
+#    legend.text = element_text(size = 13),
+#    legend.title = element_text(size = 16),
+#    legend.position = c(1, 1),  # Move legend to top right
+##    legend.justification = c(1, 1),  # Align legend to top right
+#    panel.grid.minor = element_blank(),
+#    panel.border = element_blank(),
+#    panel.background = element_blank())
+
+# Calculate the number of samples per location
+location_counts <- location_viral %>%
+  group_by(location) %>%
+  summarise(count = n()) %>%
+  mutate(label = paste0(location, " (n=", count, ")"))
+
+# Create a named vector for easy mapping
+location_labels <- setNames(location_counts$label, location_counts$location)
+
+g_viral <- ggplot(location_viral, aes(x=location, y=p_reads, fill=location)) +
+  geom_violin(trim=FALSE) +
+  geom_boxplot(width=0.1, fill="white", color="black", outlier.shape=NA) +
+  geom_jitter(width=0.1, size=0.5, alpha=0.5) +
+  scale_y_log10(name="Viral read fraction", labels = label_log(digits=2)) +
+  scale_x_discrete(name="Location", labels = location_labels) +
+  scale_fill_brewer(palette = "Dark2") +
+  labs(title="Total viral fraction based on assigned reads over all locations") +
+  theme_light() + 
+  theme(
+    axis.text.y = element_text(size = 12),
+    axis.text.x = element_text(size = 12, angle = 45, hjust = 1),
+    axis.title.x = element_text(size = 15),    
+    axis.title.y = element_text(size = 15),  
+    legend.position = "none",
+    panel.grid.minor = element_blank(),
+    panel.border = element_blank(),
+    panel.background = element_blank()
+  ) +
+  theme_kit +
+  coord_flip()  # This flips the coordinates to make the plot horizontal
+
 g_viral
 ```
 
 ## Taxonomic composition of viruses
 
-The one dominant viruses we see is Hepadnaviridae. The threshold for the label "other" are the set of families that make up less than 20% composition in all samples (the only reason I did this was because there were too many matches).
+The threshold for the label "other" are the set of families that make up less than 20% composition in all samples (the only reason I did this was because there were too many matches). We can see that other makes up a big portion of the viral composition. Outside of the "other" label, Hepadnaviridae makes up the largest portion of the viral composition.
 
 ```{r}
 #| label: extract-viral-taxa
@@ -593,9 +644,21 @@ viral_families_display <- viral_families_major %>%
 
 # Create a custom color palette with up to 20 colors
 custom_palette <- c(
-  brewer.pal(8, "Set2"),
-  brewer.pal(8, "Set1"),
-  brewer.pal(4, "Pastel1")
+  brewer.pal(12, "Paired"),
+  brewer.pal(12, "Set3")
+)
+
+n_classifications <- length(unique(viral_families_display$classification)) - 1
+
+custom_palette_with_black <- c(
+  custom_palette[1:n_classifications],
+  "black"
+)
+
+# Create a new color palette with black for "Other"
+custom_palette_with_black <- c(
+  custom_palette[1:n_classifications],
+  "black"
 )
 
 # Plot
@@ -604,7 +667,8 @@ g_families <- g_comp_base +
   scale_y_continuous(name="% Viral Reads", limits=c(0,1.01), 
                      breaks = seq(0,1,0.2),
                      expand=c(0,0), labels = function(y) y*100) +
-  scale_fill_manual(values = custom_palette)
+  scale_fill_manual(values = custom_palette_with_black) +
+  facet_wrap(~ location, scales = "free_x", ncol = 2) 
 g_families
 ```
 
@@ -617,6 +681,8 @@ I calculated the relative abundance of human-infecting viruses in two ways:
 -   First, as the total number of deduplicated human-virus reads in each sample, divided by the number of raw reads ("All reads").
 
 -   Second, as a fraction of preprocessed (cleaned, deduplicated, computationally ribodepleted) reads ("Preprocessed reads").
+
+Note that 10 of the pools had no viral reads: 5 from "Heilongjiang, Mudanjiang", 4 from "Jiangsu, Nanjing", and 1 from "Xinjiang, Urmqi".
 
 ```{r}
 #| label: prepare-hv
@@ -636,8 +702,8 @@ mrg_hv <- read_tsv(hv_reads_path, show_col_types = FALSE) %>%
 
 ```{r}
 #| label: count-hv-reads
-#| fig-width: 15
-#| fig-height: 10
+#| fig-width: 10
+#| fig-height: 15
 #| warning: false
 
 # Get raw read counts
@@ -680,28 +746,97 @@ read_counts_agg_long <- read_counts_agg %>%
 #  theme_kit
 #g_read_counts
 
-g_viral <- ggplot(read_counts_agg_long, aes(x=p_reads, y=library, color=location, shape=read_group)) +
-  geom_point() +
-  scale_y_discrete(name="Plasma pool") +
-  scale_x_log10(name="Viral read fraction") +
-  scale_color_brewer(palette = "Dark2") +
-  #facet_grid(.~read_group, scales = "free") +
-  guides(color=guide_legend(nrow=2), shape=guide_legend(nrow=2),
-         linetype=guide_legend(nrow=2)) +
-  theme_kit
+#g_viral <- ggplot(read_counts_agg_long, aes(x=p_reads, y=library, color=location, shape=read_group)) +
+#  geom_point() +
+#  scale_y_discrete(name="Plasma pool") +
+#  scale_x_log10(name="Viral read fraction") +
+#  scale_color_brewer(palette = "Dark2") +
+#  facet_grid(.~read_group, scales = "free") +
+#  guides(color=guide_legend(nrow=2), shape=guide_legend(nrow=2),
+#         linetype=guide_legend(nrow=2)) +
+#  theme_kit
+#g_viral
+
+hv_location <- read_counts_agg_long %>% filter(read_group == "Preprocessed reads" ) %>% group_by(location) 
+
+hv_location_counts <- hv_location %>%
+  group_by(location) %>%
+  summarise(count = n()) %>%
+  mutate(label = paste0(location, " (n=", count, ")"))
+
+  # Create a named vector for easy mapping
+location_labels <- setNames(hv_location_counts$label, hv_location_counts$location)
+
+# Create a named vector for easy mapping
+# Plot
+# g_viral <- ggplot(p_reads_viral, aes(x=p_reads, y=library, color=location, shape=read_group)) +
+#   geom_point() +
+#   scale_y_discrete(name="Plasma pool") +
+#   scale_x_log10(name="Viral read fraction") +
+#   scale_color_brewer(palette = "Dark2") +
+#   #facet_grid(.~read_group, scales = "free") +
+#   guides(color=guide_legend(nrow=2), shape=guide_legend(nrow=2),
+#          linetype=guide_legend(nrow=2)) +
+#   theme_kit
+
+#ggplot(location_viral, aes(x=p_reads, y=location, color = location)) +
+#  geom_quasirandom(size=2) +
+#  scale_x_log10(name="Viral read fraction", labels = label_log(digits=2)) +
+#  scale_y_discrete(name="Location") +
+#  scale_color_brewer(palette = "Dark2") +
+#  theme_light() + 
+#    theme(
+#    axis.text.y = element_text(size = 8),
+#    axis.text.x = element_text(size = 14),
+#    axis.ticks.y = element_blank(),
+#    axis.line = element_line(colour = "black"),
+#    axis.title.x = element_text(size = 15),    
+#    axis.title.y = element_text(size = 15),  
+#    legend.text = element_text(size = 13),
+#    legend.title = element_text(size = 16),
+#    legend.position = c(1, 1),  # Move legend to top right
+##    legend.justification = c(1, 1),  # Align legend to top right
+#    panel.grid.minor = element_blank(),
+#    panel.border = element_blank(),
+#    panel.background = element_blank())
+
+g_viral <- ggplot(hv_location, aes(x=location, y=p_reads, fill=location)) +
+  geom_violin(trim=FALSE) +
+  geom_boxplot(width=0.1, fill="white", color="black", outlier.shape=NA) +
+  geom_jitter(width=0.1, size=0.5, alpha=0.5) +
+  scale_y_log10(name="Viral read fraction", labels = label_log(digits=2)) +
+  scale_x_discrete(name="Location", labels = location_labels) +
+  scale_fill_brewer(palette = "Dark2") +
+  theme_light() + 
+  theme(
+    axis.text.y = element_text(size = 12),
+    axis.text.x = element_text(size = 12, angle = 45, hjust = 1),
+    axis.title.x = element_text(size = 15),    
+    axis.title.y = element_text(size = 15),  
+    legend.position = "none",
+    panel.grid.minor = element_blank(),
+    panel.border = element_blank(),
+    panel.background = element_blank()
+  ) +
+  theme_kit +
+  coord_flip()  # This flips the coordinates to make the plot horizontal
+
 g_viral
+
+
 ```
 
 ## Overall taxonomy and composition
 
-Composition of HV reads was changed from when looking at all viral reads. The two dominant viruses we see are Anellovirdae and Hepadnaviridae. The threshold for the label "other" are the set of families that make up less than 5% composition in all samples.
+The two dominant viruses we see are Anellovirdae and Hepadnaviridae, with Parvoviridae . The threshold for the label "other" are the set of families that make up less than 5% composition in all samples.
 
 ```{r}
 #| label: raise-hv-taxa
 #| include: false
 
 # Filter samples and add viral taxa information
-samples_keep <- read_counts %>% filter(n_reads_hv > 5) %>% pull(sample)
+#samples_keep <- read_counts %>% filter(n_reads_hv > 1) %>% pull(sample)
+samples_keep <- read_counts %>%  pull(sample)
 mrg_hv_named <- mrg_hv %>% filter(sample %in% samples_keep, hv_status) %>% left_join(viral_taxa, by="taxid") 
 
 # Discover viral species & genera for HV reads
@@ -742,7 +877,7 @@ hv_reads_family <- raise_rank(mrg_hv_named, viral_taxa, "family")
 ```{r}
 #| label: hv-family
 #| fig-width: 15
-#| fig-height: 10
+#| fig-height: 15
 threshold_major_family <- 0.05
 
 # Count reads for each human-viral family
@@ -773,10 +908,12 @@ g_hv_family <- g_comp_base +
   scale_y_continuous(name="% HV Reads", limits=c(0,1.01), 
                      breaks = seq(0,1,0.2),
                      expand=c(0,0), labels = function(y) y*100) +
-  scale_fill_brewer(palette = "Accent", name = "Viral family") +
+  scale_fill_brewer(palette = "Set1", name = "Viral family") +
+
   labs(title="Family composition of human-viral reads") +
   guides(fill=guide_legend(ncol=4)) +
-  theme(plot.title = element_text(size=rel(1.4), hjust=0, face="plain"))
+  theme(plot.title = element_text(size=rel(1.4), hjust=0, face="plain")) +  
+  facet_wrap(~ location, scales = "free_x", ncol = 2) 
 g_hv_family
 
 # Get most prominent families for text
@@ -785,8 +922,259 @@ hv_family_collate <- hv_family_counts %>%
   summarize(n_reads_tot = sum(n_reads_hv),
             p_reads_max = max(p_reads_hv), .groups="drop") %>% 
   arrange(desc(n_reads_tot))
-hv_family_collate
+display_hv_family_collate <- hv_family_collate %>%
+  select(name, n_reads_tot) %>%
+  rename(`Family` = name, `Total number of reads` = n_reads_tot)
+display_hv_family_collate
 ```
+
+
+## Analyzing specific families
+
+We now investigate the composition of specific families that had more than 5 viral reads. In investigating individual viral families, to avoid distortions from a few rare reads, I restricted myself to samples where that family made up at least 10% of human-viral reads:
+
+```{r}
+#| label: plot-viral-family-scripts
+#| include: false
+
+library_with_total <- libraries %>% group_by(location) %>% mutate(total_samples = n_distinct(sample)) %>% ungroup()
+
+plot_viral_family_composition <- function(taxid_chosen, threshold_major_species = 0.1) {
+  # Get set of chosen family reads
+  family_samples <- hv_family_counts %>% filter(taxid == taxid_chosen) %>%
+    filter(p_reads_hv >= 0.1) %>%
+    pull(sample)
+  family_ids <- hv_reads_family %>% 
+    filter(taxid == taxid_chosen, sample %in% family_samples) %>%
+    pull(seq_id)
+
+  # Count reads for each species in the chosen family
+  species_counts <- hv_reads_species %>%
+    filter(seq_id %in% family_ids) %>%
+    group_by(sample, location, name, taxid) %>%
+    count(name = "n_reads_hv") %>%
+    group_by(sample, location) %>%
+    mutate(p_reads_family = n_reads_hv/sum(n_reads_hv))
+
+  # Identify high-ranking species and group others
+  species_major_tab <- species_counts %>% group_by(name) %>% 
+    filter(p_reads_family == max(p_reads_family)) %>% 
+    filter(row_number() == 1) %>%
+    arrange(desc(p_reads_family)) %>% 
+    filter(p_reads_family > threshold_major_species)
+  species_counts_major <- species_counts %>%
+    mutate(name_display = ifelse(name %in% species_major_tab$name, 
+                                 name, "Other")) %>%
+    group_by(sample, location, name_display) %>%
+    summarize(n_reads_family = sum(n_reads_hv),
+              p_reads_family = sum(p_reads_family), 
+              .groups="drop") %>%
+    mutate(name_display = factor(name_display, 
+                                 levels = c(species_major_tab$name, "Other")))
+  species_counts_display <- species_counts_major %>%
+    rename(p_reads = p_reads_family, classification = name_display) %>% 
+    right_join(library_with_total, by = c('sample', 'location')) %>% 
+    #mutate(p_reads = coalesce(p_reads, 0),
+    #       classification = coalesce(classification, species_major_tab$name[1])) %>%
+    mutate(location = factor(location))
+    #group_by(location) %>%
+    #mutate(samples_with_reads = sum(p_reads > 0),
+    #  label = paste0(location, " (", sprintf("%.1f%%", 100 * samples_with_reads / total_samples), ")")) %>%
+    #ungroup()
+
+  # Get family name for the title
+  family_name <- viral_taxa %>% 
+    filter(taxid == taxid_chosen) %>% 
+    pull(name)
+
+  species_count <- species_counts_display %>% select(classification) %>% distinct() %>% pull() %>% length()
+  if (species_count <= 8) {
+    pal <- brewer.pal(name = "Accent", n = species_count)
+  } else {
+    pal <- c(brewer.pal(name = "Paired", n = 12), brewer.pal(name = "Set3", n =12), brewer.pal(name = "Set1", n = 9))[1:species_count]
+  }
+
+  # Plot
+  g_species <- g_comp_base + 
+    geom_col(data=species_counts_display, position = "stack") +
+    scale_y_continuous(name=paste0("% ", family_name, " reads"), limits=c(0,1.01), 
+                       breaks = seq(0,1,0.2),
+                       expand=c(0,0), labels = function(y) y*100) +
+    scale_fill_manual(values = pal, name = "Viral species") +
+    labs(title=paste0("Species composition of ", family_name, " reads")) +
+    facet_wrap(~ location, scales = "free_x", ncol = 2) +
+    guides(fill=guide_legend(ncol=3)) +
+    theme(plot.title = element_text(size=rel(1.4), hjust=0, face="plain"))
+  return(g_species)
+}
+
+plot_viral_family_histogram <- function(taxid_chosen) {
+  # Filter data for the specified virus family
+  family_data <- hv_family_counts %>%
+    right_join(library_with_total, by = c('sample')) %>% 
+    ungroup() %>%
+    mutate(n_reads_hv = coalesce(n_reads_hv, 0)) %>%
+    filter(taxid == taxid_chosen) %>%
+    group_by(location) %>%
+    summarize(n_reads_hv = sum(n_reads_hv), .groups="drop")
+  
+  # Get family name for the title
+  family_name <- viral_taxa %>% 
+    filter(taxid == taxid_chosen) %>% 
+    pull(name)
+  
+  # Create the histogram
+  g_histogram <- ggplot(family_data, aes(x = location, y = n_reads_hv)) +
+    geom_bar(stat = "identity") +
+    geom_text(aes(label = scales::comma(n_reads_hv)), vjust = -0.5, size = 3) +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+    labs(
+      title = paste("Distribution of", family_name, "Reads by Location"),
+      x = "Location",
+      y = "Number of reads"
+    ) +
+    scale_y_continuous(labels = scales::comma) +
+    expand_limits(y = max(family_data$n_reads_hv) * 1.1)+
+    theme_kit  # Expand y-axis to make room for labels
+  return(g_histogram)
+}
+
+
+```
+
+### Hepadnaviridae (Number of reads: 339,427)
+```{r}
+#| label: plot-hepadnaviridae-histogram
+#| fig-width: 10
+#| fig-height: 5
+
+# Hepadnaviridae
+plot_viral_family_histogram(taxid_chosen=10404)
+```
+```{r}
+#| label: plot-hepadnaviridae-composition
+#| fig-width: 10
+#| fig-height: 15
+#| warning: false
+ 
+# Hepadnaviridae
+plot_viral_family_composition(taxid_chosen=10404, threshold_major_species = 0.1)
+```
+
+### Parvoviridae (Number of reads: 17,401)
+```{r}
+#| label: plot-parvoviridae-histogram
+#| fig-width: 10
+#| fig-height: 5
+
+# Parvoviridae
+plot_viral_family_histogram(taxid_chosen=10780)
+```
+```{r}
+#| label: plot-parvoviridae-composition
+#| fig-width: 10
+#| fig-height: 15
+#| warning: false
+# Parvoviridae
+plot_viral_family_composition(taxid_chosen=10780, threshold_major_species = 0.1)
+```
+
+### Anelloviridae (Number of reads: 3001)
+```{r}
+#| label: plot-anelloviridae-histogram
+#| fig-width: 10
+#| fig-height: 5
+
+# Anelloviridae
+plot_viral_family_histogram(taxid_chosen=687329)
+```
+```{r}
+#| label: plot-anelloviridae-composition
+#| fig-width: 10
+#| fig-height: 15
+#| warning: false
+# Anelloviridae
+plot_viral_family_composition(taxid_chosen=687329, threshold_major_species = 0.1)
+```
+
+### Orthoherpesviridae (Number of reads: 298)
+```{r}
+#| label: plot-orthoherpesviridae-histogram
+#| fig-width: 10
+#| fig-height: 5
+
+# Orthoherpesviridae
+plot_viral_family_histogram(taxid_chosen=3044472)
+```
+```{r}
+#| label: plot-orthoherpesviridae-composition
+#| fig-width: 10
+#| fig-height: 15
+#| warning: false
+ 
+# Orthoherpesviridae
+plot_viral_family_composition(taxid_chosen=3044472, threshold_major_species = 0.1)
+```
+
+### Retroviridae (Number of reads: 115)
+```{r}
+#| label: plot-retroviridae-histogram
+#| fig-width: 10
+#| fig-height: 5
+
+# Retroviridae
+plot_viral_family_histogram(taxid_chosen=11632)
+```
+```{r}
+#| label: plot-retroviridae-composition
+#| fig-width: 10
+#| fig-height: 15
+#| warning: false
+ 
+# Retroviridae
+plot_viral_family_composition(taxid_chosen=11632, threshold_major_species = 0.1)
+```
+
+### Microviridae (Number of reads: 61)
+```{r}
+#| label: plot-microviridae-histogram
+#| fig-width: 10
+#| fig-height: 5
+
+# Microviridae
+plot_viral_family_histogram(taxid_chosen=10841)
+```
+```{r}
+#| label: plot-microviridae-composition
+#| fig-width: 10
+#| fig-height: 15
+#| warning: false
+ 
+# Microviridae
+plot_viral_family_composition(taxid_chosen=10841, threshold_major_species = 0.1)
+```
+
+### Adenoviridae (Number of reads: 28)
+```{r}
+#| label: plot-adenoviridae-histogram
+#| fig-width: 10
+#| fig-height: 5
+
+# Adenoviridae
+plot_viral_family_histogram(taxid_chosen=10508)
+```
+```{r}
+#| label: plot-adenoviridae-composition
+#| fig-width: 10
+#| fig-height: 15
+#| warning: false
+#| 
+# Adenoviridae
+plot_viral_family_composition(taxid_chosen=10508, threshold_major_species = 0.1)
+```
+
+## Relative abundance of pathogenic viruses of interest
 
 ```{r}
 #| label: hv-composition-exclusion
@@ -856,7 +1244,6 @@ rename(
 
 ```
 
-## Species analysis
 ```{r}
 #| label: hv-filter-exclusion
 #| include: false
@@ -922,7 +1309,114 @@ result <- result %>%
 #result
 ```
 
+Each dot represents a sample, colored by viral family. The x-axis shows the relative abundance of human-infecting viruses, and the y-axis shows the species.
+```{r}
+#| label: plot-pathogenic-viruses
+#| fig-width: 10
+#| fig-height: 15
+#| warning: false
+
+species_family <- result %>% select(species, family) %>% rename('name' = 'species')
+
+play <- hv_species_counts %>% 
+  ungroup() %>%
+  inner_join(libraries, by = 'sample') %>%
+  inner_join(species_family, by = 'name') %>%
+  mutate(name = ifelse(name == "Severe acute respiratory syndrome-related coronavirus", "SARS-related coronavirus", name)) %>%
+  filter(!(family %in% c("Anelloviridae", NA, "Microviridae", "Rhabdoviridae"))) 
+
+adjusted_play <- play %>% 
+  group_by(name) %>%
+  mutate(virus_prevalence_num = n_distinct(sample)/n_distinct(libraries),
+         total_reads_hv = sum(n_reads_hv)) %>%
+  ungroup() %>%
+  mutate(name = fct_reorder(name, virus_prevalence_num, .desc=TRUE)) %>% 
+  select(name, ra_reads_hv, family, location, virus_prevalence_num, total_reads_hv, n_reads_hv)
+
+pal <- c(brewer.pal(8, 'Dark2'),brewer.pal(8, 'Accent'))
+
+#, labels = label_log(digits=2)
+
+ra_dot <- ggplot(adjusted_play, aes(x = ra_reads_hv, y=name)) +
+  geom_quasirandom(orientation = 'y', aes(color = family)) +
+  scale_color_manual(values = pal) + 
+    scale_x_log10(
+    "Relative abundance human virus reads",
+    labels=label_log(digits=3)
+  ) +
+  labs(y =  "",
+       color = 'Viral family') + 
+  guides(color = guide_legend(ncol=2)) +
+  theme_light() + 
+    theme(
+    axis.text.y = element_text(size = 10),
+    axis.text.x = element_text(size = 12),
+    axis.ticks.y = element_blank(),axis.line = element_line(colour = "black"),
+    axis.title.x = element_text(size = 14),    
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 10, face="bold"),
+    legend.position = 'bottom',
+    #legend.position = c(1, 1),  # Move legend to top right
+    #legend.justification = c(1, 1),  # Align legend to top right
+    panel.grid.minor = element_blank(),
+    panel.border = element_blank(),
+    panel.background = element_blank())
+ra_dot
+#  geom_text(aes(label = total_reads_hv, y = name), 
+#            x = 1e-9, hjust = 0, vjust = 0.5, size = 3, 
+#            check_overlap = TRUE)
+```
+
+
+We can ask Claude to analyze the pathogenicity of these viruses  along with their popular names.
+
+
+| Scientific Name | Popular/Well-known Name | Pathogenicity to Humans |
+|-----------------|-------------------------|-------------------------|
+| Human immunodeficiency virus 1 | HIV-1 | Very High |
+| Severe acute respiratory syndrome-related coronavirus | SARS-CoV | High |
+| Hepatitis B virus | HBV | High |
+| Hepacivirus hominis | Hepatitis C virus (HCV) | High |
+| Simplexvirus humanalpha1 | Herpes simplex virus 1 (HSV-1) | Moderate to High |
+| Cytomegalovirus humanbeta5 | Human cytomegalovirus (HCMV) | Moderate to High |
+| Lymphocryptovirus humangamma4 | Epstein-Barr virus (EBV) | Moderate |
+| Human mastadenovirus C | Adenovirus C | Moderate |
+| Human mastadenovirus F | Adenovirus F | Moderate |
+| Roseolovirus humanbeta6a | Human herpesvirus 6A (HHV-6A) | Low to Moderate |
+| Roseolovirus humanbeta6b | Human herpesvirus 6B (HHV-6B) | Low to Moderate |
+| Roseolovirus humanbeta7 | Human herpesvirus 7 (HHV-7) | Low to Moderate |
+| Rhadinovirus humangamma8 | Kaposi's sarcoma-associated herpesvirus (KSHV) | Low to Moderate |
+| Molluscum contagiosum virus | MCV | Low |
+| Erythroparvovirus primate1 | Parvovirus B19 | Low |
+| Human erythrovirus V9 | Erythrovirus V9 | Low |
+| Alphapapillomavirus 4 | Human papillomavirus 4 (HPV-4) | Low |
+| Betapolyomavirus hominis | Human polyomavirus | Low |
+| Dependoparvovirus primate1 | Adeno-associated virus (AAV) | Very Low |
+| Murine leukemia virus | MLV | Very Low (not a human pathogen) |
+| Murine leukemia-related retroviruses | MLV-related viruses | Very Low (not typical human pathogens) |
+
+I'd like to BLAST some of these reads against the NCBI nt database to see if we can get some more info on them.
+
+I would also like to make the relative abudnace plot where we assume that all human reads have been removed.
+
+# Conclusion
+
+There were some interesting takeways from this analysis:
+
+1. Human read fraction remains quite high in plasma if special sample preparation/library preparation is not taken (see [here](https://pubmed.ncbi.nlm.nih.gov/33767340/)).
+2. There is a lot of Anelloviridae in blood, including that which has not been classified by species.
+3. Pathogenic viruses such as HIV and HBV, and even latent viruses like Herpes are picked up by plasma MGS
+4. Respiratory viruses are also picked up by plasma MGS (SARS), but not as much as other viruses.
+
+*We do note that we've analyzed other datasets and it seems that having a large catchment is crucial, as we'd expect, for picking up these more rare, pathogenic viruses*. Using this data, we can also look at China's HIV/HBV reported incidence to do a P2RA/swab sampling type analysis. We plan to do more analysis on this data, but wanted to share some preliminary results.
+
+
+# Appendix
+
+## Human-infecting virus families, genera, and species
+
 To get a good overview of families, genera, and species, we can look at a Sankey plot where the magnitude of relative abundance, averaged over all samples, is shown in parentheses.
+
 
 ```{r}
 #| label: hv-sankey
@@ -1017,12 +1511,11 @@ sankey <- create_sankey_plot(sankey_data)
 sankey
 ```
 
-To get a better idea of the relative abundance of species, we can create a dot plot where each dot represents the relative abundance of a particular species in a sample.
 
 ```{r}
 #| label: hv-species-dot
 #| fig-height: 10
-#| fig-width: 10
+#| fig-width: 15
 #| warning: false
 
 species_family <- result %>% select(species, family) %>% rename('name' = 'species')
@@ -1030,178 +1523,88 @@ species_family <- result %>% select(species, family) %>% rename('name' = 'specie
 play <- hv_species_counts %>% 
   ungroup() %>%
   inner_join(libraries, by = 'sample') %>%
-  inner_join(species_family, by = 'name')
+  inner_join(species_family, by = 'name') %>%
+  mutate(name = ifelse(name == "Severe acute respiratory syndrome-related coronavirus", "SARS-related coronavirus", name))
 
-play$family <- factor(play$family, levels=hv_family_collate %>% pull(family))
-play <- play %>%
-  arrange(family, name) %>%
-  mutate(name = factor(name, levels = unique(name))) %>%
+adjusted_play <- play %>% 
   group_by(name) %>%
-  mutate(virus_count = n_distinct(sample),
-         mean_ra = mean(ra_reads_hv)) %>%
+  mutate(virus_prevalence_num = n_distinct(sample)/n_distinct(libraries),
+         total_reads_hv = sum(n_reads_hv)) %>%
   ungroup() %>%
-  mutate(total_samples = n_distinct(libraries),
-         virus_prevalence = paste0(virus_count, "/", total_samples),
-          virus_prevalence_num = virus_count/total_samples,
-            name = paste0(name, ' (', virus_prevalence, ')')) %>% 
-  mutate(name = fct_reorder(name, virus_prevalence_num, .desc = TRUE))
-#name_order <- play %>% arrange(family) %>% pull(name)
-#play$name <- factor(play$name, levels = name_order)
+  mutate(name = fct_reorder(name, virus_prevalence_num, .desc=TRUE)) %>% 
+  select(name, ra_reads_hv, family, location, virus_prevalence_num, total_reads_hv, n_reads_hv)
 
 pal <- c(brewer.pal(8, 'Dark2'),brewer.pal(8, 'Accent'))
 
-ra_dot <- ggplot(play, aes(x = ra_reads_hv, y=name)) +
+#, labels = label_log(digits=2)
+
+ra_dot <- ggplot(adjusted_play, aes(x = ra_reads_hv, y=name)) +
   geom_quasirandom(orientation = 'y', aes(color = family)) +
   scale_color_manual(values = pal) + 
     scale_x_log10(
     "Relative abundance human virus reads",
-    labels = function(x) parse(text = paste0("10^", round(log10(x)))),
-    limits = c(1e-9, 1),
-    n.breaks = 8
+    labels=label_log(digits=3)
   ) +
-  labs(y = 'Human virus  (# samples with virus/total # samples)',
+  labs(y =  "",
        color = 'Viral family') + 
+  guides(color = guide_legend(ncol=2)) +
   theme_light() + 
     theme(
-    axis.text.y = element_text(size = 8),
-    axis.text.x = element_text(size = 14),
+    axis.text.y = element_text(size = 10),
+    axis.text.x = element_text(size = 12),
     axis.ticks.y = element_blank(),axis.line = element_line(colour = "black"),
-    axis.title.x = element_text(size = 15),    
-    axis.title.y = element_text(size = 15),  
-    legend.text = element_text(size = 13),
-    legend.title = element_text(size = 16),
-    legend.position = c(1, 1),  # Move legend to top right
-    legend.justification = c(1, 1),  # Align legend to top right
+    axis.title.x = element_text(size = 14),    
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 10, face="bold"),
+    legend.position = 'bottom',
+    #legend.position = c(1, 1),  # Move legend to top right
+    #legend.justification = c(1, 1),  # Align legend to top right
     panel.grid.minor = element_blank(),
     panel.border = element_blank(),
     panel.background = element_blank())
-ra_dot
-```
+#  geom_text(aes(label = total_reads_hv, y = name), 
+#            x = 1e-9, hjust = 0, vjust = 0.5, size = 3, 
+#            check_overlap = TRUE)
+prev_play <- adjusted_play %>%
+  group_by(name, location) %>%
+  reframe(location_of_reads = n_reads_hv/total_reads_hv,
+          total_reads_hv = first(total_reads_hv))
 
-We now exclude Anelloviridae from the plot and add in the locations of the samples in a separate bar plot.
-```{r}
-#| label: hv-species-wout-anello
-#| fig-height: 10
-#| fig-width: 15
-#| warning: false
-
-play_subset <- play %>% filter(family != "Anelloviridae")
-play_subset <- play_subset%>%
-  group_by(name) %>%
-  mutate(virus_count = n_distinct(sample),
-         mean_ra = mean(ra_reads_hv)) %>%
-  ungroup() %>%
-  mutate(total_samples = n_distinct(libraries),
-         virus_prevalence = paste0(virus_count, "/", total_samples),
-         virus_prevalence_num = virus_count/total_samples,
-            name = paste0(name, ' (', virus_prevalence, ')')) %>% 
-  mutate(name = fct_reorder(name, virus_prevalence_num, .desc = TRUE))
-
-#play_subset <- left_join(play_subset, libraries %>% select(sample, location), by = 'sample')
-
-pal <- brewer.pal(12, 'Set3')
-
-ra_dot <- ggplot(play_subset, aes(x = ra_reads_hv, y=name)) +
-  geom_quasirandom(orientation = 'y', aes(color = family)) +
-#  geom_point(aes(x = mean_ra), shape = 18, size = 4) + 
-  scale_color_manual(values = pal) + 
-  scale_x_log10(
-    "Relative abundance human virus reads",
-    labels = function(x) parse(text = paste0("10^", round(log10(x)))),
-    limits = c(1e-9, 1),
-    n.breaks = 8
-  ) +
-  labs(y = 'Human virus (# samples with virus/total # samples)',
-       color = 'Viral family') +
-  theme_light() + 
-  theme(
-    axis.text.y = element_text(size = 8),
-    axis.text.x = element_text(size = 14),
-    axis.ticks.y = element_blank(),axis.line = element_line(colour = "black"),
-    axis.title.x = element_text(size = 15),    
-    axis.title.y = element_text(size = 15),  
-    legend.text = element_text(size = 13),
-    legend.title = element_text(size = 16),
-    legend.position = c(1, 1),  # Move legend to top right
-    legend.justification = c(1, 1),  # Align legend to top right
-    panel.grid.minor = element_blank(),
-    panel.border = element_blank(),
-    panel.background = element_blank())
-
-prevalence_bar <- ggplot(play_subset, aes(x = virus_prevalence_num, y = name, fill = location)) +
+prevalence_bar <- ggplot(prev_play, aes(x = location_of_reads, y = name, fill = location)) +
   geom_bar(stat = "identity", position = "stack") +
-  scale_fill_brewer(palette = "Dark2") +
+  scale_fill_brewer(palette = "Accent") +
   scale_x_continuous(
-    "Percent of samples with virus",
-    labels = scales::percent_format(scale = 1, accuracy = 1)
+    "Relative composition of locations with reads",
+    labels = scales::percent_format(scale = 100, accuracy = 1),
+    limits = c(0, 1)
   ) +
-  labs(y = 'Human virus',
+  labs(y = '',
        fill = 'Location') +
+  guides(fill = guide_legend(ncol=1)) +
   theme_light() + 
   theme(
     axis.text.y = element_blank(),
-    axis.text.x = element_text(size = 14),
+    axis.text.x = element_text(size = 12),
     axis.ticks.y = element_blank(),
     axis.line = element_line(colour = "black"),
-    axis.title.x = element_text(size = 15),    
+    axis.title.x = element_text(size = 14),    
     axis.title.y = element_blank(),  
-    legend.text = element_text(size = 13),
-    legend.title = element_text(size = 16),
-    legend.position = c(1, 1),  # Move legend to top right
-    legend.justification = c(1, 1),  # Align legend to top right
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 10, face = "bold"),
+    legend.position = 'bottom', 
+    #legend.position = c(1, 1),  # Move legend to top right
+    #legend.justification = c(1, 1),  # Align legend to top right
     panel.grid.minor = element_blank(),
     panel.border = element_blank(),
-    panel.background = element_blank())
-
+    panel.background = element_blank()) + 
+  geom_text(aes(label = total_reads_hv, y = name), 
+            x = 1e-9, hjust = 0, vjust = 0.5, size = 3, 
+            check_overlap = TRUE, fontface = "bold")
 # Combine the plots using ggarrange
 combined_plot <- ggarrange(ra_dot, prevalence_bar, 
                            ncol = 2, 
-                           widths = c(1.2, 1),
+                           widths = c(2, 1),
                            common.legend = FALSE,
                            align = "h")
 combined_plot
 ```
-
-We can ask Claude to analyze the pathogenicity of these viruses  along with their popular names.
-
-
-| Scientific Name | Popular/Well-known Name | Pathogenicity to Humans |
-|-----------------|-------------------------|-------------------------|
-| Human immunodeficiency virus 1 | HIV-1 | Very High |
-| Severe acute respiratory syndrome-related coronavirus | SARS-CoV | High |
-| Hepatitis B virus | HBV | High |
-| Hepacivirus hominis | Hepatitis C virus (HCV) | High |
-| Simplexvirus humanalpha1 | Herpes simplex virus 1 (HSV-1) | Moderate to High |
-| Cytomegalovirus humanbeta5 | Human cytomegalovirus (HCMV) | Moderate to High |
-| Lymphocryptovirus humangamma4 | Epstein-Barr virus (EBV) | Moderate |
-| Human mastadenovirus C | Adenovirus C | Moderate |
-| Human mastadenovirus F | Adenovirus F | Moderate |
-| Roseolovirus humanbeta6a | Human herpesvirus 6A (HHV-6A) | Low to Moderate |
-| Roseolovirus humanbeta6b | Human herpesvirus 6B (HHV-6B) | Low to Moderate |
-| Roseolovirus humanbeta7 | Human herpesvirus 7 (HHV-7) | Low to Moderate |
-| Rhadinovirus humangamma8 | Kaposi's sarcoma-associated herpesvirus (KSHV) | Low to Moderate |
-| Molluscum contagiosum virus | MCV | Low |
-| Erythroparvovirus primate1 | Parvovirus B19 | Low |
-| Human erythrovirus V9 | Erythrovirus V9 | Low |
-| Alphapapillomavirus 4 | Human papillomavirus 4 (HPV-4) | Low |
-| Betapolyomavirus hominis | Human polyomavirus | Low |
-| Dependoparvovirus primate1 | Adeno-associated virus (AAV) | Very Low |
-| Murine leukemia virus | MLV | Very Low (not a human pathogen) |
-| Murine leukemia-related retroviruses | MLV-related viruses | Very Low (not typical human pathogens) |
-| Gokushovirus WZ-2015a | - | Unknown (likely Very Low) |
-| Human gut gokushovirus | - | Unknown (likely Very Low) |
-| Microviridae sp. | - | Unknown (likely Very Low) |
-| Microvirus sp. | - | Unknown (likely Very Low) |
-
-I'd like to BLAST some of these reads against the NCBI nt database to see if we can get some more info on them.
-
-# Conclusion
-
-There were some interesting takeways from this analysis:
-
-1. Human read fraction remains quite high in plasma if special sample preparation/library preparation is not taken.
-2. There is a lot of Anelloviridae in blood, including that which has not been classified by species.
-3. Pathogenic viruses such as HIV and HBV, and even latent viruses like Herpes are picked up by plasma MGS
-4. Respiratory viruses are also picked up by plasma MGS (SARS), but not as much as other viruses.
-
-*We do note that we've analyzed other datasets and it seems that having a large catchment is crucial, as we'd expect, for picking up these more rare, pathogenic viruses*. Using this data, we can also look at China's HIV/HBV reported incidence to do a P2RA/swab sampling type analysis. We plan to do more analysis on this data, but wanted to share some preliminary results.
