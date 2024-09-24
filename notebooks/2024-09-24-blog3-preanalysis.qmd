@@ -11,8 +11,8 @@ format:
     number-depth: 3 
     toc-location: right 
     page-layout: full 
-    code-fold: true 
-    code-tools: true 
+    code-fold: false 
+    code-tools: false 
     df-print: paged 
     fig-format: svg
 editor: 
@@ -21,6 +21,7 @@ editor:
 comments:
   hypothesis: true 
 execute: 
+  echo: false
   freeze: auto
   cache: true
 title-block-banner: "#de2d26"
@@ -33,7 +34,7 @@ We performed a literature search for large (>100M read pairs), untargeted whole 
 
 # Data
 
-| **Study**                    | **Sample type** | **Viral Enrichment** | **Sequencing type** | **Country** | **Read pairs** | **Reference**                                  |
+| **Study**                    | **Sample type** | **Human read removal (during sample prep)** | **Sequencing type** | **Country** | **Read pairs** | **Reference**                                  |
 |------------------------------|-----------------|----------------------|---------------------|-------------|----------------|------------------------------------------------|
 | Cebria-Mendoza et al. (2021) | Plasma          | Yes                  | DNA + RNA           | Spain       | 230M           | [link](https://doi.org/10.3390/v13112322)              |
 | Thijssen et al. (2023)       | Plasma          | No                   | DNA + RNA           | Iran        | 116M           | [link](https://doi.org/10.3390/v15071425)              |
@@ -88,7 +89,7 @@ The pipeline for analysis was developed by William Bradshaw, and slightly modify
 > 3. A viral identification phase, in which a custom multi-step pipeline based around Bowtie2 and Kraken2 is used to sensitively and specifically identify human-infecting virus (HV) reads in the input data for downstream analysis.
 > 4. A final QC and output phase, in which FASTQC, MultiQC and other tools are used to assess the quality of the data produced by the pipeline at various steps and produce summarized output data for downstream analysis and visualization.
 
-![Diagram of the analysis pipeline (we do not use the BLAST Validation and only use FASTP for quality trimming and cleaning).](https://github.com/harmonbhasin/mgs-workflow/blob/master/readme-workflow-diagram.png)
+![Diagram of the analysis pipeline (we do not use the BLAST Validation and only use FASTP for quality trimming and cleaning).](2024-09-24-blog3-preanalysis_files/figure-html/simplified-diagram.png)
 
 # Results
 ```{r}
@@ -193,10 +194,10 @@ scale_fill_classification <- function() {
 
 ## Kingdom composition
 ```{r}
-#| label: kingdom-fraction
+#| label: kingdom-fraction-plot
 #| warning: false
 #| fig-width: 15
-#| fig-height: 5
+#| fig-height: 10
 #| fig-cap: "**Figure 1**: Read composition"
 
 # Import composition data
@@ -206,90 +207,71 @@ comp_paths <- file.path(tax_final_dirs, "taxonomic_composition.tsv.gz")
 comp <- lapply(comp_paths, read_tsv, show_col_types = FALSE) %>% bind_rows() %>%
   inner_join(libraries, by='sample')
 
-sample_type_comp <- comp %>%
+dataset_comp <- comp %>%
   filter(classification %in% classifications) %>%
-  group_by(sample_type, classification) %>%
+  group_by(dataset, classification) %>%
   summarize(n_reads = sum(n_reads), .groups = "drop_last") %>%
   ungroup() %>%
-  group_by(sample_type) %>%
+  group_by(dataset) %>%
   mutate(total_reads = sum(n_reads)) %>%
   ungroup() %>%
-  group_by(sample_type, classification) %>%
+  group_by(dataset, classification) %>%
   mutate(p_reads = n_reads / total_reads) %>%
-  select(sample_type, classification, p_reads) %>%
-  ungroup()
+  select(dataset, classification, p_reads) %>%
+  ungroup() %>%
+  left_join(libraries[3:4] %>% unique(), by="dataset")
 
 # Plot overall composition
-g_comp <- g_comp_base + geom_comp(data = sample_type_comp) +
+g_comp <- g_comp_base_study + geom_comp(data = dataset_comp) +
   scale_y_pc_reads(limits = c(0,1.01), breaks = seq(0,1,0.2)) +
   scale_fill_classification() + 
   ggtitle("Read composition (all reads, all groups)") +
   coord_flip()
 g_comp
-
-sample_type_comp_summ <- sample_type_comp %>% 
-  mutate(p_reads = sprintf("%0.6f %%", p_reads*100)) %>%
-  pivot_wider(names_from = classification, values_from = p_reads)
-
-sample_type_comp_summ %>% kable()
-
-# Subset to only include the datasets that have viral enrichment
-subset_sample_type_comp <- comp %>%
-  filter(dataset %in% c("cebriamendoza2021", "thompson2023","oconnell2023", "aydillo2022")) %>%
-  filter(classification %in% classifications) %>%
-  group_by(sample_type, classification) %>%
-  summarize(n_reads = sum(n_reads), .groups = "drop_last") %>%
-  ungroup() %>%
-  group_by(sample_type) %>%
-  mutate(total_reads = sum(n_reads)) %>%
-  ungroup() %>%
-  group_by(sample_type, classification) %>%
-  mutate(p_reads = n_reads / total_reads) %>%
-  select(sample_type, classification, p_reads) %>%
-  ungroup()
-
-subset_sample_type_comp_summ <- subset_sample_type_comp %>% 
-  mutate(p_reads = sprintf("%0.6f %%", p_reads*100)) %>%
-  pivot_wider(names_from = classification, values_from = p_reads) %>%
-  mutate(sample_type = ifelse(sample_type == "plasma", "plasma (viral enrichment)", "whole-blood"))
-
-subset_sample_type_comp_summ %>% kable()
 ```
 
 Comparing the average kingdom fraction between sample types reveals that whole blood samples have higher human fractions than plasma, whereas plasma has higher unassigned, archaeal, bacterial, and viral fractions. However, if we instead only look at the plasma dataset that did viral enrichment, we see a stark difference in composition. Specifically, the plasma samples only have around 2% human reads, with around 6% viral reads.
 
 ```{r}
-#| label: kingdom-fraction-human-reads
-#| include: false
+#| label: kingdom-fraction-table
+#| warning: false
+#| fig-cap: "**Table 2**: Read composition"
+
+dataset_comp_summ <- dataset_comp %>% 
+  mutate(p_reads = sprintf("%0.5f %%", p_reads*100)) %>%
+  pivot_wider(names_from = classification, values_from = p_reads)
+
+dataset_comp_summ %>% kable()
+```
+
+```{r}
+#| label: kingdom-fraction-table-without-human-reads
+#| fig-cap: "**Table 3**: Read composition without human reads"
 
 non_human_classifications <- c("Unassigned","Bacterial", "Archaeal", "Viral")
 
-nonhuman_sample_type_comp <- comp %>%
+nonhuman_dataset_comp <- comp %>%
   filter(classification %in% non_human_classifications) %>%
-  group_by(sample_type, classification) %>%
+  group_by(dataset, classification) %>%
   summarize(n_reads = sum(n_reads), .groups = "drop_last") %>%
   ungroup() %>%
-  group_by(sample_type) %>%
+  group_by(dataset) %>%
   mutate(total_reads = sum(n_reads)) %>%
   ungroup() %>%
-  group_by(sample_type, classification) %>%
+  group_by(dataset, classification) %>%
   mutate(p_reads = n_reads / total_reads) %>%
-  select(sample_type, classification, p_reads) %>%
-  ungroup() 
+  select(dataset, classification, p_reads) %>%
+  ungroup() %>%
+  left_join(libraries[3:4] %>% unique(), by="dataset")
 
-# Plot overall composition
-#g_comp <- g_comp_base + geom_comp(data = nonhuman_dataset_comp) +
-#  scale_y_pc_reads(limits = c(0,1.01), breaks = seq(0,1,0.2)) +
-#  scale_fill_classification() + 
-#  ggtitle("Read composition (all reads, all groups)") +
-#  coord_flip()
-#g_comp
-
-nonhuman_sample_type_comp_summ <- nonhuman_sample_type_comp %>% 
-  mutate(p_reads = sprintf("%0.6f %%", p_reads*100)) %>%
+nonhuman_dataset_comp_summ <- nonhuman_dataset_comp %>% 
+  mutate(
+    p_reads = sprintf("%0.5f %%", p_reads*100),
+    classification = sprintf('%s (controlled for human reads)', classification)
+  ) %>%
   pivot_wider(names_from = classification, values_from = p_reads)
 
-nonhuman_sample_type_comp_summ %>% kable()
+nonhuman_dataset_comp_summ %>% kable()
 ```
 
 Another way we can look at this is by controlling for human reads across all datasets. When we do this over all whole blood and plasma datasets, we can see that they have similar read composition across the board. However, plasma has a higher viral read fraction by a magnitude of 10.
@@ -349,10 +331,10 @@ mrg_hv <- mrg_hv %>%
 
 ```{r}
 #| label: count-hv-reads
-#| fig-width: 10
-#| fig-height: 5
+#| fig-width: 15
+#| fig-height: 10
 #| warning: false
-#| include: false
+#| fig-cap: "**Figure 2**: Proportion of all reads in each dataset"
 
 read_counts_raw <- filter(basic_stats_raw) %>%
   dplyr::select(sample, n_reads_raw = n_read_pairs)
@@ -370,34 +352,18 @@ read_counts <- read_counts_raw %>%
 #write_tsv(read_counts, "/Users/harmonbhasin/work/securebio/blogs/blog_3/n_hv_reads_per_sample.tsv")
 
 # Filters out 0s
-g_all_reads <- ggplot(read_counts, aes(x=sample_type, y=p_reads)) +
+g_all_reads <- ggplot(read_counts, aes(x=dataset, y=p_reads, fill = sample_type)) +
   geom_boxplot(width=0.1) +
   scale_y_log10(labels = label_log(digits = 3)) +
   labs(title="Proportion of all reads in each dataset") +
   theme_kit +
   coord_flip()
 g_all_reads
-#ggsave("/Users/harmonbhasin/work/securebio/blogs/blog_3/hv_ra_datasets.png", g_all_reads, width = 15, height = 5)
 ```
 
 ```{r}
 #| label: sample-type-ra-hv
-#| include: false
-
-read_counts %>% 
-  group_by(sample_type) %>% 
-  summarize(mean_ra = mean(p_reads)) %>%
-  mutate(mean_ra = sprintf("%.2e", mean_ra)) %>%
-  rename(`RA` = mean_ra) %>%
-  kable()
-```
-
-When comparing the relative abundance of human-infecting viruses between sample types, we see that the plasma samples have a higher relative abundance of human-infecting viruses than the whole blood samples (samples with 0 reads are filtered out). Compare the mean relative abundance of human infecting viruses between plasma and whole blood and we see that plasma has a relative abundance 3 orders of magnitude higher.
-
-```{r}
-#| label: hv-fraction-human-reads-removed
-#| include: false
-
+#| fig-cap: "**Table 4**: Relative abundance of human-infecting viruses in each dataset, with and without human reads"
 read_counts_human <- comp %>% 
   filter(classification == "Human") %>% 
   group_by(sample) %>% 
@@ -408,16 +374,22 @@ read_counts_nonhuman <- read_counts %>%
   mutate(n_reads_not_human = n_reads_raw - human_reads) %>%
   mutate(p_reads_not_human = n_reads_hv/n_reads_not_human)
 
-read_counts_nonhuman %>% 
-  group_by(sample_type) %>% 
+summ_nonhuman_read_counts <- read_counts_nonhuman %>% 
+  group_by(dataset) %>% 
   summarize(mean_ra = mean(p_reads_not_human)) %>%
   mutate(mean_ra = sprintf("%.2e", mean_ra)) %>%
-  rename(`RA (control for human reads)` = mean_ra) %>%
-  kable()
+  rename(`RA (control for human reads)` = mean_ra)#| 
 
+read_counts %>% 
+  group_by(dataset) %>% 
+  summarize(mean_ra = mean(p_reads)) %>%
+  mutate(mean_ra = sprintf("%.2e", mean_ra)) %>%
+  rename(`RA` = mean_ra) %>%
+  left_join(summ_nonhuman_read_counts, by="dataset") %>%
+  kable()
 ```
 
-If we control for human reads, we see that the relationship remains the same.
+When comparing the relative abundance of human-infecting viruses between sample types, we see that the plasma samples have a higher relative abundance of human-infecting viruses than the whole blood samples (samples with 0 reads are filtered out). Compare the mean relative abundance of human infecting viruses between plasma and whole blood and we see that plasma has a relative abundance 3 orders of magnitude higher. If we control for human reads, we see that the relationship remains the same.
 
 ### Family composition
 
@@ -426,74 +398,11 @@ If we control for human reads, we see that the relationship remains the same.
 #| fig-width: 15
 #| fig-height: 5 
 #| cache-lazy: false 
+#| fig-cap: "**Figure 3**: Family composition of human-viral reads"
 
 hv_reads_family <- readRDS("/Users/harmonbhasin/work/securebio/blogs/blog_3/hv_reads_family.RDS")
 threshold_major_family <- 0.01
 
-# Count reads for each human-viral family
-hv_family_counts <- hv_reads_family %>% 
-  group_by(name, taxid, sample_type) %>%
-  count(name = "n_reads_hv") %>%
-  group_by(sample_type) %>%
-  mutate(p_reads_hv = n_reads_hv/sum(n_reads_hv))
-
-# Identify high-ranking families and group others
-hv_family_major_tab <- hv_family_counts %>% group_by(name) %>% 
-  filter(p_reads_hv == max(p_reads_hv)) %>% filter(row_number() == 1) %>%
-  arrange(desc(p_reads_hv)) %>% filter(p_reads_hv > threshold_major_family)
-hv_family_counts_major <- hv_family_counts %>%
-  mutate(name_display = ifelse(name %in% hv_family_major_tab$name, name, "Other")) %>%
-  group_by(sample_type, name_display) %>%
-  summarize(n_reads_hv = sum(n_reads_hv), p_reads_hv = sum(p_reads_hv), 
-            .groups="drop") %>%
-  mutate(name_display = factor(name_display, 
-                               levels = c(hv_family_major_tab$name, "Other")))
-hv_family_counts_display <- hv_family_counts_major %>%
-  rename(p_reads = p_reads_hv, classification = name_display)
-
-# Create a custom color palette with up to 20 colors
-custom_palette <- c(
-  brewer.pal(12, "Paired"),
-  brewer.pal(12, "Set3")
-)
-
-n_classifications <- length(unique(hv_family_counts_display$classification)) - 1
-
-custom_palette_with_black <- c(
-  custom_palette[1:n_classifications],
-  "black"
-)
-
-# Get most prominent families for text
-hv_family_collate <- hv_family_counts %>%
-  group_by(name, taxid, sample_type) %>% 
-  summarize(n_reads_tot = sum(n_reads_hv),
-            p_reads_max = max(p_reads_hv), .groups="drop") %>% 
-  arrange(desc(n_reads_tot))
-
-g_hv_family <- g_comp_base + 
-  geom_col(data=hv_family_counts_display, position = "stack", width=1) +
-  scale_y_continuous(name="% HV Reads", limits=c(0,1.01), 
-                     breaks = seq(0,1,0.2),
-                     expand=c(0,0), labels = function(y) y*100) +
-  scale_fill_manual(values = custom_palette_with_black, name = "Viral family") +
-  labs(title="Family composition of human-viral reads") +
-  guides(fill=guide_legend(ncol=4)) +
-#  facet_grid(~dataset + sample_type, scales="free_x") +
-  theme_kit + 
-  theme(
-    plot.title = element_text(size=rel(1.4), hjust=0, face="plain")
-    ) + 
-    coord_flip()
-g_hv_family
-#ggsave("/Users/harmonbhasin/work/securebio/blogs/blog_3/hv_family_sample_type.png", g_hv_family, width = 15, height = 5)
-```
-
-We can start off by looking at the family composition of human-infecting viruses in both sample types. We can see that Anelloviridae is the most abudant family in plasma, whereas Flavivirdae is the most abundant family in whole blood. To get a better understanding of this breakdown, we can look at the families in each study.
-
-```{r}
-#| label: explore-hv-family-study
- 
 # Count reads for each human-viral family
 hv_family_counts <- hv_reads_family %>% 
   group_by(name, taxid, dataset) %>%
@@ -514,9 +423,14 @@ hv_family_counts_major <- hv_family_counts %>%
                                levels = c(hv_family_major_tab$name, "Other")))
 hv_family_counts_display <- hv_family_counts_major %>%
   rename(p_reads = p_reads_hv, classification = name_display) %>%
-  left_join(libraries[3:4] %>% unique(), by=c("dataset"))
+  left_join(libraries[3:4] %>% unique(), by="dataset")
 
 # Create a custom color palette with up to 20 colors
+custom_palette <- c(
+  brewer.pal(12, "Paired"),
+  brewer.pal(12, "Set3")
+)
+
 n_classifications <- length(unique(hv_family_counts_display$classification)) - 1
 
 custom_palette_with_black <- c(
@@ -546,8 +460,9 @@ g_hv_family <- g_comp_base_study +
     ) + 
     coord_flip()
 g_hv_family
-#ggsave("/Users/harmonbhasin/work/securebio/blogs/blog_3/hv_family_study.png", g_hv_family, width = 15, height = 5)
 ```
+
+We can start off by looking at the family composition of human-infecting viruses in both sample types. We can see that Anelloviridae is the most abudant family in plasma, whereas Flavivirdae is the most abundant family in whole blood. To get a better understanding of this breakdown, we can look at the families in each study.
 
 Comparing individual studies to each other, we see that there is a wide range of human-infecting virus depending on the study, even within the same sample type.
 
@@ -556,9 +471,10 @@ Comparing individual studies to each other, we see that there is a wide range of
 ```{r}
 #| label: load-hv-species
 #| include: false
-#| cache-lazy: false
+#| cache-lazy: false 
 
 hv_reads_species <- readRDS("/Users/harmonbhasin/work/securebio/blogs/blog_3/hv_reads_species.RDS")
+
 viruses_of_interest <- c("Anelloviridae sp.", 
 "Simplexvirus humanalpha1", 
 "Hepatitis B virus", 
@@ -611,7 +527,7 @@ viruses_of_interest_common <- c("Anelloviridae sp.",
 #| fig-width: 15
 #| fig-height: 10
 #| warning: false
-
+#| fig-cap: "**Figure 4**: Relative abundance of *selected* human-infecting viruses in each dataset"
 dataset_hv_reads_species <- hv_reads_species %>%
   group_by(name, taxid, dataset, sample) %>%
   count(name = "n_reads_hv")
@@ -637,7 +553,41 @@ g_hv_species <- ggplot(filtered_dataset_ra, aes(x = name, y = ra, color = sample
   theme_kit +
   coord_flip()
 g_hv_species
-#ggsave("/Users/harmonbhasin/work/securebio/blogs/blog_3/hv_species.png", g_hv_species, width = 15, height = 10)
+``` 
+
+```{r}
+#| label: hv-species-without-human-reads
+#| fig-width: 15
+#| fig-height: 10
+#| warning: false
+#| fig-cap: "**Figure 5**: Relative abundance of *selected* human-infecting viruses in each dataset without human reads"
+
+dataset_hv_reads_species <- hv_reads_species %>%
+  group_by(name, taxid, dataset, sample) %>%
+  count(name = "n_reads_hv")
+
+nonhuman_all_dataset_ra <- read_counts_raw %>%
+  left_join(dataset_hv_reads_species, by=c("sample")) %>%
+  mutate(n_reads_hv = replace_na(n_reads_hv, 0)) %>%
+  left_join(libraries, by=c("sample", "dataset")) %>%
+  left_join(read_counts_human, by=c("sample")) %>%
+  mutate(ra = n_reads_hv / (n_reads_raw - human_reads))
+
+filtered_nonhuman_dataset_ra <- nonhuman_all_dataset_ra %>%
+  filter(name %in% viruses_of_interest) %>%
+  filter(ra != 0) %>%
+  mutate(common_name = viruses_of_interest_common[match(name, viruses_of_interest)]) %>%
+  mutate(name = common_name) %>%
+  select(-common_name)
+
+# Once again, we filter for samples with 0 reads
+g_hv_species_nonhuman <- ggplot(filtered_nonhuman_dataset_ra, aes(x = name, y = ra, color = sample_type, shape=dataset)) +
+  geom_quasirandom(method = "quasirandom", size =1) +
+  scale_y_log10(labels = label_log(digits = 3)) +
+  scale_color_brewer(palette = "Dark2") +
+  theme_kit +
+  coord_flip()
+g_hv_species_nonhuman
 ``` 
 
 ```{r}

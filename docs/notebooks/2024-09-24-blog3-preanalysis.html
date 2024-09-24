@@ -22,40 +22,6 @@ ul.task-list li input[type="checkbox"] {
   margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
   vertical-align: middle;
 }
-/* CSS for syntax highlighting */
-pre > code.sourceCode { white-space: pre; position: relative; }
-pre > code.sourceCode > span { line-height: 1.25; }
-pre > code.sourceCode > span:empty { height: 1.2em; }
-.sourceCode { overflow: visible; }
-code.sourceCode > span { color: inherit; text-decoration: inherit; }
-div.sourceCode { margin: 1em 0; }
-pre.sourceCode { margin: 0; }
-@media screen {
-div.sourceCode { overflow: auto; }
-}
-@media print {
-pre > code.sourceCode { white-space: pre-wrap; }
-pre > code.sourceCode > span { display: inline-block; text-indent: -5em; padding-left: 5em; }
-}
-pre.numberSource code
-  { counter-reset: source-line 0; }
-pre.numberSource code > span
-  { position: relative; left: -4em; counter-increment: source-line; }
-pre.numberSource code > span > a:first-child::before
-  { content: counter(source-line);
-    position: relative; left: -1em; text-align: right; vertical-align: baseline;
-    border: none; display: inline-block;
-    -webkit-touch-callout: none; -webkit-user-select: none;
-    -khtml-user-select: none; -moz-user-select: none;
-    -ms-user-select: none; user-select: none;
-    padding: 0 4px; width: 4em;
-  }
-pre.numberSource { margin-left: 3em;  padding-left: 4px; }
-div.sourceCode
-  {   }
-@media screen {
-pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
-}
 </style>
 
 
@@ -142,7 +108,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <header id="title-block-header" class="quarto-title-block default page-columns page-full">
   <div class="quarto-title-banner page-columns page-full">
     <div class="quarto-title column-page-left">
-      <div class="quarto-title-block"><div><h1 class="title">Blog 3: Pre-analysis</h1><button type="button" class="btn code-tools-button dropdown-toggle" id="quarto-code-tools-menu" data-bs-toggle="dropdown" aria-expanded="false"><i class="bi"></i> Code</button><ul class="dropdown-menu dropdown-menu-end" aria-labelelledby="quarto-code-tools-menu"><li><a id="quarto-show-all-code" class="dropdown-item" href="javascript:void(0)" role="button">Show All Code</a></li><li><a id="quarto-hide-all-code" class="dropdown-item" href="javascript:void(0)" role="button">Hide All Code</a></li><li><hr class="dropdown-divider"></li><li><a id="quarto-view-source" class="dropdown-item" href="javascript:void(0)" role="button">View Source</a></li></ul></div></div>
+      <h1 class="title">Blog 3: Pre-analysis</h1>
             <p class="subtitle lead">Combined whole blood and plasma analysis</p>
                       </div>
   </div>
@@ -228,7 +194,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <tr class="header">
 <th><strong>Study</strong></th>
 <th><strong>Sample type</strong></th>
-<th><strong>Viral Enrichment</strong></th>
+<th><strong>Human read removal (during sample prep)</strong></th>
 <th><strong>Sequencing type</strong></th>
 <th><strong>Country</strong></th>
 <th><strong>Read pairs</strong></th>
@@ -343,7 +309,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </blockquote>
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="https://github.com/harmonbhasin/mgs-workflow/blob/master/readme-workflow-diagram.png" class="img-fluid figure-img"></p>
+<p><img src="2024-09-24-blog3-preanalysis_files/figure-html/simplified-diagram.png?" class="img-fluid figure-img"></p>
 <figcaption>Diagram of the analysis pipeline (we do not use the BLAST Validation and only use FASTP for quality trimming and cleaning).</figcaption>
 </figure>
 </div>
@@ -353,359 +319,274 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <section id="kingdom-composition" class="level2" data-number="4.1">
 <h2 data-number="4.1" class="anchored" data-anchor-id="kingdom-composition"><span class="header-section-number">4.1</span> Kingdom composition</h2>
 <div class="cell">
-<details class="code-fold">
-<summary>Code</summary>
-<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Import composition data</span></span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>tax_final_dirs <span class="ot">&lt;-</span> <span class="fu">file.path</span>(results_dirs, <span class="st">"taxonomy_final"</span>)</span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>comp_paths <span class="ot">&lt;-</span> <span class="fu">file.path</span>(tax_final_dirs, <span class="st">"taxonomic_composition.tsv.gz"</span>)</span>
-<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>comp <span class="ot">&lt;-</span> <span class="fu">lapply</span>(comp_paths, read_tsv, <span class="at">show_col_types =</span> <span class="cn">FALSE</span>) <span class="sc">%&gt;%</span> <span class="fu">bind_rows</span>() <span class="sc">%&gt;%</span></span>
-<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">inner_join</span>(libraries, <span class="at">by=</span><span class="st">'sample'</span>)</span>
-<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>sample_type_comp <span class="ot">&lt;-</span> comp <span class="sc">%&gt;%</span></span>
-<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(classification <span class="sc">%in%</span> classifications) <span class="sc">%&gt;%</span></span>
-<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(sample_type, classification) <span class="sc">%&gt;%</span></span>
-<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarize</span>(<span class="at">n_reads =</span> <span class="fu">sum</span>(n_reads), <span class="at">.groups =</span> <span class="st">"drop_last"</span>) <span class="sc">%&gt;%</span></span>
-<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ungroup</span>() <span class="sc">%&gt;%</span></span>
-<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(sample_type) <span class="sc">%&gt;%</span></span>
-<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">total_reads =</span> <span class="fu">sum</span>(n_reads)) <span class="sc">%&gt;%</span></span>
-<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ungroup</span>() <span class="sc">%&gt;%</span></span>
-<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(sample_type, classification) <span class="sc">%&gt;%</span></span>
-<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">p_reads =</span> n_reads <span class="sc">/</span> total_reads) <span class="sc">%&gt;%</span></span>
-<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(sample_type, classification, p_reads) <span class="sc">%&gt;%</span></span>
-<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ungroup</span>()</span>
-<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a><span class="co"># Plot overall composition</span></span>
-<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a>g_comp <span class="ot">&lt;-</span> g_comp_base <span class="sc">+</span> <span class="fu">geom_comp</span>(<span class="at">data =</span> sample_type_comp) <span class="sc">+</span></span>
-<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_y_pc_reads</span>(<span class="at">limits =</span> <span class="fu">c</span>(<span class="dv">0</span>,<span class="fl">1.01</span>), <span class="at">breaks =</span> <span class="fu">seq</span>(<span class="dv">0</span>,<span class="dv">1</span>,<span class="fl">0.2</span>)) <span class="sc">+</span></span>
-<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_fill_classification</span>() <span class="sc">+</span> </span>
-<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggtitle</span>(<span class="st">"Read composition (all reads, all groups)"</span>) <span class="sc">+</span></span>
-<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a>  <span class="fu">coord_flip</span>()</span>
-<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a>g_comp</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-</details>
 <div class="cell-output-display">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="2024-09-24-blog3-preanalysis_files/figure-html/kingdom-fraction-1.svg" class="img-fluid figure-img"></p>
+<p><img src="2024-09-24-blog3-preanalysis_files/figure-html/kingdom-fraction-plot-1.svg?" class="img-fluid figure-img"></p>
 <figcaption><strong>Figure 1</strong>: Read composition</figcaption>
 </figure>
 </div>
 </div>
-<details class="code-fold">
-<summary>Code</summary>
-<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>sample_type_comp_summ <span class="ot">&lt;-</span> sample_type_comp <span class="sc">%&gt;%</span> </span>
-<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">p_reads =</span> <span class="fu">sprintf</span>(<span class="st">"%0.6f %%"</span>, p_reads<span class="sc">*</span><span class="dv">100</span>)) <span class="sc">%&gt;%</span></span>
-<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pivot_wider</span>(<span class="at">names_from =</span> classification, <span class="at">values_from =</span> p_reads)</span>
-<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>sample_type_comp_summ <span class="sc">%&gt;%</span> <span class="fu">kable</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-</details>
-<div class="cell-output-display">
-<table class="caption-top table table-sm table-striped small">
-<colgroup>
-<col style="width: 17%">
-<col style="width: 16%">
-<col style="width: 16%">
-<col style="width: 17%">
-<col style="width: 16%">
-<col style="width: 16%">
-</colgroup>
-<thead>
-<tr class="header">
-<th style="text-align: left;">sample_type</th>
-<th style="text-align: left;">Archaeal</th>
-<th style="text-align: left;">Bacterial</th>
-<th style="text-align: left;">Human</th>
-<th style="text-align: left;">Unassigned</th>
-<th style="text-align: left;">Viral</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td style="text-align: left;">plasma</td>
-<td style="text-align: left;">0.002001 %</td>
-<td style="text-align: left;">1.515024 %</td>
-<td style="text-align: left;">94.223525 %</td>
-<td style="text-align: left;">4.108680 %</td>
-<td style="text-align: left;">0.150770 %</td>
-</tr>
-<tr class="even">
-<td style="text-align: left;">whole-blood</td>
-<td style="text-align: left;">0.000100 %</td>
-<td style="text-align: left;">0.024519 %</td>
-<td style="text-align: left;">99.853072 %</td>
-<td style="text-align: left;">0.122064 %</td>
-<td style="text-align: left;">0.000245 %</td>
-</tr>
-</tbody>
-</table>
-<p><strong>Figure 1</strong>: Read composition</p>
-</div>
-<details class="code-fold">
-<summary>Code</summary>
-<div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Subset to only include the datasets that have viral enrichment</span></span>
-<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>subset_sample_type_comp <span class="ot">&lt;-</span> comp <span class="sc">%&gt;%</span></span>
-<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(dataset <span class="sc">%in%</span> <span class="fu">c</span>(<span class="st">"cebriamendoza2021"</span>, <span class="st">"thompson2023"</span>,<span class="st">"oconnell2023"</span>, <span class="st">"aydillo2022"</span>)) <span class="sc">%&gt;%</span></span>
-<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(classification <span class="sc">%in%</span> classifications) <span class="sc">%&gt;%</span></span>
-<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(sample_type, classification) <span class="sc">%&gt;%</span></span>
-<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarize</span>(<span class="at">n_reads =</span> <span class="fu">sum</span>(n_reads), <span class="at">.groups =</span> <span class="st">"drop_last"</span>) <span class="sc">%&gt;%</span></span>
-<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ungroup</span>() <span class="sc">%&gt;%</span></span>
-<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(sample_type) <span class="sc">%&gt;%</span></span>
-<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">total_reads =</span> <span class="fu">sum</span>(n_reads)) <span class="sc">%&gt;%</span></span>
-<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ungroup</span>() <span class="sc">%&gt;%</span></span>
-<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(sample_type, classification) <span class="sc">%&gt;%</span></span>
-<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">p_reads =</span> n_reads <span class="sc">/</span> total_reads) <span class="sc">%&gt;%</span></span>
-<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(sample_type, classification, p_reads) <span class="sc">%&gt;%</span></span>
-<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ungroup</span>()</span>
-<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb3-16"><a href="#cb3-16" aria-hidden="true" tabindex="-1"></a>subset_sample_type_comp_summ <span class="ot">&lt;-</span> subset_sample_type_comp <span class="sc">%&gt;%</span> </span>
-<span id="cb3-17"><a href="#cb3-17" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">p_reads =</span> <span class="fu">sprintf</span>(<span class="st">"%0.6f %%"</span>, p_reads<span class="sc">*</span><span class="dv">100</span>)) <span class="sc">%&gt;%</span></span>
-<span id="cb3-18"><a href="#cb3-18" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pivot_wider</span>(<span class="at">names_from =</span> classification, <span class="at">values_from =</span> p_reads) <span class="sc">%&gt;%</span></span>
-<span id="cb3-19"><a href="#cb3-19" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">sample_type =</span> <span class="fu">ifelse</span>(sample_type <span class="sc">==</span> <span class="st">"plasma"</span>, <span class="st">"plasma (viral enrichment)"</span>, <span class="st">"whole-blood"</span>))</span>
-<span id="cb3-20"><a href="#cb3-20" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb3-21"><a href="#cb3-21" aria-hidden="true" tabindex="-1"></a>subset_sample_type_comp_summ <span class="sc">%&gt;%</span> <span class="fu">kable</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-</details>
-<div class="cell-output-display">
-<table class="caption-top table table-sm table-striped small">
-<colgroup>
-<col style="width: 30%">
-<col style="width: 13%">
-<col style="width: 14%">
-<col style="width: 14%">
-<col style="width: 14%">
-<col style="width: 13%">
-</colgroup>
-<thead>
-<tr class="header">
-<th style="text-align: left;">sample_type</th>
-<th style="text-align: left;">Archaeal</th>
-<th style="text-align: left;">Bacterial</th>
-<th style="text-align: left;">Human</th>
-<th style="text-align: left;">Unassigned</th>
-<th style="text-align: left;">Viral</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td style="text-align: left;">plasma (viral enrichment)</td>
-<td style="text-align: left;">0.033110 %</td>
-<td style="text-align: left;">49.891894 %</td>
-<td style="text-align: left;">1.926983 %</td>
-<td style="text-align: left;">42.163597 %</td>
-<td style="text-align: left;">5.984416 %</td>
-</tr>
-<tr class="even">
-<td style="text-align: left;">whole-blood</td>
-<td style="text-align: left;">0.000100 %</td>
-<td style="text-align: left;">0.024519 %</td>
-<td style="text-align: left;">99.853072 %</td>
-<td style="text-align: left;">0.122064 %</td>
-<td style="text-align: left;">0.000245 %</td>
-</tr>
-</tbody>
-</table>
-<p><strong>Figure 1</strong>: Read composition</p>
-</div>
 </div>
 <p>Comparing the average kingdom fraction between sample types reveals that whole blood samples have higher human fractions than plasma, whereas plasma has higher unassigned, archaeal, bacterial, and viral fractions. However, if we instead only look at the plasma dataset that did viral enrichment, we see a stark difference in composition. Specifically, the plasma samples only have around 2% human reads, with around 6% viral reads.</p>
+<div class="cell">
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<colgroup>
+<col style="width: 21%">
+<col style="width: 14%">
+<col style="width: 12%">
+<col style="width: 13%">
+<col style="width: 13%">
+<col style="width: 13%">
+<col style="width: 12%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">dataset</th>
+<th style="text-align: left;">sample_type</th>
+<th style="text-align: left;">Archaeal</th>
+<th style="text-align: left;">Bacterial</th>
+<th style="text-align: left;">Human</th>
+<th style="text-align: left;">Unassigned</th>
+<th style="text-align: left;">Viral</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">cebriamendoza2021</td>
+<td style="text-align: left;">plasma</td>
+<td style="text-align: left;">0.03311 %</td>
+<td style="text-align: left;">49.89189 %</td>
+<td style="text-align: left;">1.92698 %</td>
+<td style="text-align: left;">42.16360 %</td>
+<td style="text-align: left;">5.98442 %</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">thijssen2023</td>
+<td style="text-align: left;">plasma</td>
+<td style="text-align: left;">0.01280 %</td>
+<td style="text-align: left;">4.51508 %</td>
+<td style="text-align: left;">22.31281 %</td>
+<td style="text-align: left;">73.12558 %</td>
+<td style="text-align: left;">0.03373 %</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">mengyi2023</td>
+<td style="text-align: left;">plasma</td>
+<td style="text-align: left;">0.00096 %</td>
+<td style="text-align: left;">0.26607 %</td>
+<td style="text-align: left;">98.38344 %</td>
+<td style="text-align: left;">1.33651 %</td>
+<td style="text-align: left;">0.01302 %</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">thompson2023</td>
+<td style="text-align: left;">whole-blood</td>
+<td style="text-align: left;">0.00007 %</td>
+<td style="text-align: left;">0.01282 %</td>
+<td style="text-align: left;">99.87494 %</td>
+<td style="text-align: left;">0.11189 %</td>
+<td style="text-align: left;">0.00027 %</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">oconnell2023</td>
+<td style="text-align: left;">whole-blood</td>
+<td style="text-align: left;">0.00004 %</td>
+<td style="text-align: left;">0.05051 %</td>
+<td style="text-align: left;">99.86217 %</td>
+<td style="text-align: left;">0.08717 %</td>
+<td style="text-align: left;">0.00011 %</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">aydillo2022</td>
+<td style="text-align: left;">whole-blood</td>
+<td style="text-align: left;">0.00061 %</td>
+<td style="text-align: left;">0.10959 %</td>
+<td style="text-align: left;">99.54011 %</td>
+<td style="text-align: left;">0.34940 %</td>
+<td style="text-align: left;">0.00028 %</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Table 2</strong>: Read composition</p>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<colgroup>
+<col style="width: 9%">
+<col style="width: 6%">
+<col style="width: 20%">
+<col style="width: 21%">
+<col style="width: 21%">
+<col style="width: 19%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">dataset</th>
+<th style="text-align: left;">sample_type</th>
+<th style="text-align: left;">Archaeal (controlled for human reads)</th>
+<th style="text-align: left;">Bacterial (controlled for human reads)</th>
+<th style="text-align: left;">Unassigned (controlled for human reads)</th>
+<th style="text-align: left;">Viral (controlled for human reads)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">cebriamendoza2021</td>
+<td style="text-align: left;">plasma</td>
+<td style="text-align: left;">0.03376 %</td>
+<td style="text-align: left;">50.87219 %</td>
+<td style="text-align: left;">42.99205 %</td>
+<td style="text-align: left;">6.10200 %</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">thijssen2023</td>
+<td style="text-align: left;">plasma</td>
+<td style="text-align: left;">0.01648 %</td>
+<td style="text-align: left;">5.81187 %</td>
+<td style="text-align: left;">94.12824 %</td>
+<td style="text-align: left;">0.04341 %</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">mengyi2023</td>
+<td style="text-align: left;">plasma</td>
+<td style="text-align: left;">0.05935 %</td>
+<td style="text-align: left;">16.45903 %</td>
+<td style="text-align: left;">82.67637 %</td>
+<td style="text-align: left;">0.80525 %</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">thompson2023</td>
+<td style="text-align: left;">whole-blood</td>
+<td style="text-align: left;">0.05890 %</td>
+<td style="text-align: left;">10.25520 %</td>
+<td style="text-align: left;">89.47051 %</td>
+<td style="text-align: left;">0.21539 %</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">oconnell2023</td>
+<td style="text-align: left;">whole-blood</td>
+<td style="text-align: left;">0.02763 %</td>
+<td style="text-align: left;">36.64757 %</td>
+<td style="text-align: left;">63.24574 %</td>
+<td style="text-align: left;">0.07906 %</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">aydillo2022</td>
+<td style="text-align: left;">whole-blood</td>
+<td style="text-align: left;">0.13290 %</td>
+<td style="text-align: left;">23.83067 %</td>
+<td style="text-align: left;">75.97604 %</td>
+<td style="text-align: left;">0.06039 %</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Table 3</strong>: Read composition without human reads</p>
+</div>
+</div>
 <p>Another way we can look at this is by controlling for human reads across all datasets. When we do this over all whole blood and plasma datasets, we can see that they have similar read composition across the board. However, plasma has a higher viral read fraction by a magnitude of 10.</p>
 </section>
 <section id="human-infecting-viruses" class="level2" data-number="4.2">
 <h2 data-number="4.2" class="anchored" data-anchor-id="human-infecting-viruses"><span class="header-section-number">4.2</span> Human-infecting viruses</h2>
 <section id="overview" class="level3" data-number="4.2.1">
 <h3 data-number="4.2.1" class="anchored" data-anchor-id="overview"><span class="header-section-number">4.2.1</span> Overview</h3>
-<p>When comparing the relative abundance of human-infecting viruses between sample types, we see that the plasma samples have a higher relative abundance of human-infecting viruses than the whole blood samples (samples with 0 reads are filtered out). Compare the mean relative abundance of human infecting viruses between plasma and whole blood and we see that plasma has a relative abundance 3 orders of magnitude higher.</p>
-<p>If we control for human reads, we see that the relationship remains the same.</p>
+<div class="cell">
+<div class="cell-output-display">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="2024-09-24-blog3-preanalysis_files/figure-html/count-hv-reads-1.svg?" class="img-fluid figure-img"></p>
+<figcaption><strong>Figure 2</strong>: Proportion of all reads in each dataset</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<thead>
+<tr class="header">
+<th style="text-align: left;">dataset</th>
+<th style="text-align: left;">RA</th>
+<th style="text-align: left;">RA (control for human reads)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">cebriamendoza2021</td>
+<td style="text-align: left;">4.06e-02</td>
+<td style="text-align: left;">4.08e-02</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">thijssen2023</td>
+<td style="text-align: left;">1.60e-04</td>
+<td style="text-align: left;">1.82e-04</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">mengyi2023</td>
+<td style="text-align: left;">9.84e-05</td>
+<td style="text-align: left;">5.11e-04</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">thompson2023</td>
+<td style="text-align: left;">1.51e-06</td>
+<td style="text-align: left;">3.18e-06</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">oconnell2023</td>
+<td style="text-align: left;">2.62e-08</td>
+<td style="text-align: left;">8.87e-08</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">aydillo2022</td>
+<td style="text-align: left;">3.58e-07</td>
+<td style="text-align: left;">7.49e-07</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Table 4</strong>: Relative abundance of human-infecting viruses in each dataset, with and without human reads</p>
+</div>
+</div>
+<p>When comparing the relative abundance of human-infecting viruses between sample types, we see that the plasma samples have a higher relative abundance of human-infecting viruses than the whole blood samples (samples with 0 reads are filtered out). Compare the mean relative abundance of human infecting viruses between plasma and whole blood and we see that plasma has a relative abundance 3 orders of magnitude higher. If we control for human reads, we see that the relationship remains the same.</p>
 </section>
 <section id="family-composition" class="level3" data-number="4.2.2">
 <h3 data-number="4.2.2" class="anchored" data-anchor-id="family-composition"><span class="header-section-number">4.2.2</span> Family composition</h3>
 <div class="cell">
-<details class="code-fold">
-<summary>Code</summary>
-<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>hv_reads_family <span class="ot">&lt;-</span> <span class="fu">readRDS</span>(<span class="st">"/Users/harmonbhasin/work/securebio/blogs/blog_3/hv_reads_family.RDS"</span>)</span>
-<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>threshold_major_family <span class="ot">&lt;-</span> <span class="fl">0.01</span></span>
-<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Count reads for each human-viral family</span></span>
-<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>hv_family_counts <span class="ot">&lt;-</span> hv_reads_family <span class="sc">%&gt;%</span> </span>
-<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(name, taxid, sample_type) <span class="sc">%&gt;%</span></span>
-<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">count</span>(<span class="at">name =</span> <span class="st">"n_reads_hv"</span>) <span class="sc">%&gt;%</span></span>
-<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(sample_type) <span class="sc">%&gt;%</span></span>
-<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">p_reads_hv =</span> n_reads_hv<span class="sc">/</span><span class="fu">sum</span>(n_reads_hv))</span>
-<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a><span class="co"># Identify high-ranking families and group others</span></span>
-<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a>hv_family_major_tab <span class="ot">&lt;-</span> hv_family_counts <span class="sc">%&gt;%</span> <span class="fu">group_by</span>(name) <span class="sc">%&gt;%</span> </span>
-<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(p_reads_hv <span class="sc">==</span> <span class="fu">max</span>(p_reads_hv)) <span class="sc">%&gt;%</span> <span class="fu">filter</span>(<span class="fu">row_number</span>() <span class="sc">==</span> <span class="dv">1</span>) <span class="sc">%&gt;%</span></span>
-<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a>  <span class="fu">arrange</span>(<span class="fu">desc</span>(p_reads_hv)) <span class="sc">%&gt;%</span> <span class="fu">filter</span>(p_reads_hv <span class="sc">&gt;</span> threshold_major_family)</span>
-<span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a>hv_family_counts_major <span class="ot">&lt;-</span> hv_family_counts <span class="sc">%&gt;%</span></span>
-<span id="cb4-16"><a href="#cb4-16" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">name_display =</span> <span class="fu">ifelse</span>(name <span class="sc">%in%</span> hv_family_major_tab<span class="sc">$</span>name, name, <span class="st">"Other"</span>)) <span class="sc">%&gt;%</span></span>
-<span id="cb4-17"><a href="#cb4-17" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(sample_type, name_display) <span class="sc">%&gt;%</span></span>
-<span id="cb4-18"><a href="#cb4-18" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarize</span>(<span class="at">n_reads_hv =</span> <span class="fu">sum</span>(n_reads_hv), <span class="at">p_reads_hv =</span> <span class="fu">sum</span>(p_reads_hv), </span>
-<span id="cb4-19"><a href="#cb4-19" aria-hidden="true" tabindex="-1"></a>            <span class="at">.groups=</span><span class="st">"drop"</span>) <span class="sc">%&gt;%</span></span>
-<span id="cb4-20"><a href="#cb4-20" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">name_display =</span> <span class="fu">factor</span>(name_display, </span>
-<span id="cb4-21"><a href="#cb4-21" aria-hidden="true" tabindex="-1"></a>                               <span class="at">levels =</span> <span class="fu">c</span>(hv_family_major_tab<span class="sc">$</span>name, <span class="st">"Other"</span>)))</span>
-<span id="cb4-22"><a href="#cb4-22" aria-hidden="true" tabindex="-1"></a>hv_family_counts_display <span class="ot">&lt;-</span> hv_family_counts_major <span class="sc">%&gt;%</span></span>
-<span id="cb4-23"><a href="#cb4-23" aria-hidden="true" tabindex="-1"></a>  <span class="fu">rename</span>(<span class="at">p_reads =</span> p_reads_hv, <span class="at">classification =</span> name_display)</span>
-<span id="cb4-24"><a href="#cb4-24" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb4-25"><a href="#cb4-25" aria-hidden="true" tabindex="-1"></a><span class="co"># Create a custom color palette with up to 20 colors</span></span>
-<span id="cb4-26"><a href="#cb4-26" aria-hidden="true" tabindex="-1"></a>custom_palette <span class="ot">&lt;-</span> <span class="fu">c</span>(</span>
-<span id="cb4-27"><a href="#cb4-27" aria-hidden="true" tabindex="-1"></a>  <span class="fu">brewer.pal</span>(<span class="dv">12</span>, <span class="st">"Paired"</span>),</span>
-<span id="cb4-28"><a href="#cb4-28" aria-hidden="true" tabindex="-1"></a>  <span class="fu">brewer.pal</span>(<span class="dv">12</span>, <span class="st">"Set3"</span>)</span>
-<span id="cb4-29"><a href="#cb4-29" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb4-30"><a href="#cb4-30" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb4-31"><a href="#cb4-31" aria-hidden="true" tabindex="-1"></a>n_classifications <span class="ot">&lt;-</span> <span class="fu">length</span>(<span class="fu">unique</span>(hv_family_counts_display<span class="sc">$</span>classification)) <span class="sc">-</span> <span class="dv">1</span></span>
-<span id="cb4-32"><a href="#cb4-32" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb4-33"><a href="#cb4-33" aria-hidden="true" tabindex="-1"></a>custom_palette_with_black <span class="ot">&lt;-</span> <span class="fu">c</span>(</span>
-<span id="cb4-34"><a href="#cb4-34" aria-hidden="true" tabindex="-1"></a>  custom_palette[<span class="dv">1</span><span class="sc">:</span>n_classifications],</span>
-<span id="cb4-35"><a href="#cb4-35" aria-hidden="true" tabindex="-1"></a>  <span class="st">"black"</span></span>
-<span id="cb4-36"><a href="#cb4-36" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb4-37"><a href="#cb4-37" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb4-38"><a href="#cb4-38" aria-hidden="true" tabindex="-1"></a><span class="co"># Get most prominent families for text</span></span>
-<span id="cb4-39"><a href="#cb4-39" aria-hidden="true" tabindex="-1"></a>hv_family_collate <span class="ot">&lt;-</span> hv_family_counts <span class="sc">%&gt;%</span></span>
-<span id="cb4-40"><a href="#cb4-40" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(name, taxid, sample_type) <span class="sc">%&gt;%</span> </span>
-<span id="cb4-41"><a href="#cb4-41" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarize</span>(<span class="at">n_reads_tot =</span> <span class="fu">sum</span>(n_reads_hv),</span>
-<span id="cb4-42"><a href="#cb4-42" aria-hidden="true" tabindex="-1"></a>            <span class="at">p_reads_max =</span> <span class="fu">max</span>(p_reads_hv), <span class="at">.groups=</span><span class="st">"drop"</span>) <span class="sc">%&gt;%</span> </span>
-<span id="cb4-43"><a href="#cb4-43" aria-hidden="true" tabindex="-1"></a>  <span class="fu">arrange</span>(<span class="fu">desc</span>(n_reads_tot))</span>
-<span id="cb4-44"><a href="#cb4-44" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb4-45"><a href="#cb4-45" aria-hidden="true" tabindex="-1"></a>g_hv_family <span class="ot">&lt;-</span> g_comp_base <span class="sc">+</span> </span>
-<span id="cb4-46"><a href="#cb4-46" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_col</span>(<span class="at">data=</span>hv_family_counts_display, <span class="at">position =</span> <span class="st">"stack"</span>, <span class="at">width=</span><span class="dv">1</span>) <span class="sc">+</span></span>
-<span id="cb4-47"><a href="#cb4-47" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_y_continuous</span>(<span class="at">name=</span><span class="st">"% HV Reads"</span>, <span class="at">limits=</span><span class="fu">c</span>(<span class="dv">0</span>,<span class="fl">1.01</span>), </span>
-<span id="cb4-48"><a href="#cb4-48" aria-hidden="true" tabindex="-1"></a>                     <span class="at">breaks =</span> <span class="fu">seq</span>(<span class="dv">0</span>,<span class="dv">1</span>,<span class="fl">0.2</span>),</span>
-<span id="cb4-49"><a href="#cb4-49" aria-hidden="true" tabindex="-1"></a>                     <span class="at">expand=</span><span class="fu">c</span>(<span class="dv">0</span>,<span class="dv">0</span>), <span class="at">labels =</span> <span class="cf">function</span>(y) y<span class="sc">*</span><span class="dv">100</span>) <span class="sc">+</span></span>
-<span id="cb4-50"><a href="#cb4-50" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_fill_manual</span>(<span class="at">values =</span> custom_palette_with_black, <span class="at">name =</span> <span class="st">"Viral family"</span>) <span class="sc">+</span></span>
-<span id="cb4-51"><a href="#cb4-51" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title=</span><span class="st">"Family composition of human-viral reads"</span>) <span class="sc">+</span></span>
-<span id="cb4-52"><a href="#cb4-52" aria-hidden="true" tabindex="-1"></a>  <span class="fu">guides</span>(<span class="at">fill=</span><span class="fu">guide_legend</span>(<span class="at">ncol=</span><span class="dv">4</span>)) <span class="sc">+</span></span>
-<span id="cb4-53"><a href="#cb4-53" aria-hidden="true" tabindex="-1"></a><span class="co">#  facet_grid(~dataset + sample_type, scales="free_x") +</span></span>
-<span id="cb4-54"><a href="#cb4-54" aria-hidden="true" tabindex="-1"></a>  theme_kit <span class="sc">+</span> </span>
-<span id="cb4-55"><a href="#cb4-55" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme</span>(</span>
-<span id="cb4-56"><a href="#cb4-56" aria-hidden="true" tabindex="-1"></a>    <span class="at">plot.title =</span> <span class="fu">element_text</span>(<span class="at">size=</span><span class="fu">rel</span>(<span class="fl">1.4</span>), <span class="at">hjust=</span><span class="dv">0</span>, <span class="at">face=</span><span class="st">"plain"</span>)</span>
-<span id="cb4-57"><a href="#cb4-57" aria-hidden="true" tabindex="-1"></a>    ) <span class="sc">+</span> </span>
-<span id="cb4-58"><a href="#cb4-58" aria-hidden="true" tabindex="-1"></a>    <span class="fu">coord_flip</span>()</span>
-<span id="cb4-59"><a href="#cb4-59" aria-hidden="true" tabindex="-1"></a>g_hv_family</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-</details>
 <div class="cell-output-display">
-<div>
+<div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="2024-09-24-blog3-preanalysis_files/figure-html/explore-hv-family-sample-type-1.svg" class="img-fluid figure-img"></p>
+<p><img src="2024-09-24-blog3-preanalysis_files/figure-html/explore-hv-family-sample-type-1.svg?" class="img-fluid figure-img"></p>
+<figcaption><strong>Figure 3</strong>: Family composition of human-viral reads</figcaption>
 </figure>
 </div>
 </div>
-<details class="code-fold">
-<summary>Code</summary>
-<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="co">#ggsave("/Users/harmonbhasin/work/securebio/blogs/blog_3/hv_family_sample_type.png", g_hv_family, width = 15, height = 5)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-</details>
 </div>
 <p>We can start off by looking at the family composition of human-infecting viruses in both sample types. We can see that Anelloviridae is the most abudant family in plasma, whereas Flavivirdae is the most abundant family in whole blood. To get a better understanding of this breakdown, we can look at the families in each study.</p>
-<div class="cell">
-<details class="code-fold">
-<summary>Code</summary>
-<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Count reads for each human-viral family</span></span>
-<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>hv_family_counts <span class="ot">&lt;-</span> hv_reads_family <span class="sc">%&gt;%</span> </span>
-<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(name, taxid, dataset) <span class="sc">%&gt;%</span></span>
-<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">count</span>(<span class="at">name =</span> <span class="st">"n_reads_hv"</span>) <span class="sc">%&gt;%</span></span>
-<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(dataset) <span class="sc">%&gt;%</span></span>
-<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">p_reads_hv =</span> n_reads_hv<span class="sc">/</span><span class="fu">sum</span>(n_reads_hv))</span>
-<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a><span class="co"># Identify high-ranking families and group others</span></span>
-<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a>hv_family_major_tab <span class="ot">&lt;-</span> hv_family_counts <span class="sc">%&gt;%</span> <span class="fu">group_by</span>(name) <span class="sc">%&gt;%</span> </span>
-<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(p_reads_hv <span class="sc">==</span> <span class="fu">max</span>(p_reads_hv)) <span class="sc">%&gt;%</span> <span class="fu">filter</span>(<span class="fu">row_number</span>() <span class="sc">==</span> <span class="dv">1</span>) <span class="sc">%&gt;%</span></span>
-<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">arrange</span>(<span class="fu">desc</span>(p_reads_hv)) <span class="sc">%&gt;%</span> <span class="fu">filter</span>(p_reads_hv <span class="sc">&gt;</span> threshold_major_family)</span>
-<span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a>hv_family_counts_major <span class="ot">&lt;-</span> hv_family_counts <span class="sc">%&gt;%</span></span>
-<span id="cb6-13"><a href="#cb6-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">name_display =</span> <span class="fu">ifelse</span>(name <span class="sc">%in%</span> hv_family_major_tab<span class="sc">$</span>name, name, <span class="st">"Other"</span>)) <span class="sc">%&gt;%</span></span>
-<span id="cb6-14"><a href="#cb6-14" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(dataset, name_display) <span class="sc">%&gt;%</span></span>
-<span id="cb6-15"><a href="#cb6-15" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarize</span>(<span class="at">n_reads_hv =</span> <span class="fu">sum</span>(n_reads_hv), <span class="at">p_reads_hv =</span> <span class="fu">sum</span>(p_reads_hv), </span>
-<span id="cb6-16"><a href="#cb6-16" aria-hidden="true" tabindex="-1"></a>            <span class="at">.groups=</span><span class="st">"drop"</span>) <span class="sc">%&gt;%</span></span>
-<span id="cb6-17"><a href="#cb6-17" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">name_display =</span> <span class="fu">factor</span>(name_display, </span>
-<span id="cb6-18"><a href="#cb6-18" aria-hidden="true" tabindex="-1"></a>                               <span class="at">levels =</span> <span class="fu">c</span>(hv_family_major_tab<span class="sc">$</span>name, <span class="st">"Other"</span>)))</span>
-<span id="cb6-19"><a href="#cb6-19" aria-hidden="true" tabindex="-1"></a>hv_family_counts_display <span class="ot">&lt;-</span> hv_family_counts_major <span class="sc">%&gt;%</span></span>
-<span id="cb6-20"><a href="#cb6-20" aria-hidden="true" tabindex="-1"></a>  <span class="fu">rename</span>(<span class="at">p_reads =</span> p_reads_hv, <span class="at">classification =</span> name_display) <span class="sc">%&gt;%</span></span>
-<span id="cb6-21"><a href="#cb6-21" aria-hidden="true" tabindex="-1"></a>  <span class="fu">left_join</span>(libraries[<span class="dv">3</span><span class="sc">:</span><span class="dv">4</span>] <span class="sc">%&gt;%</span> <span class="fu">unique</span>(), <span class="at">by=</span><span class="fu">c</span>(<span class="st">"dataset"</span>))</span>
-<span id="cb6-22"><a href="#cb6-22" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-23"><a href="#cb6-23" aria-hidden="true" tabindex="-1"></a><span class="co"># Create a custom color palette with up to 20 colors</span></span>
-<span id="cb6-24"><a href="#cb6-24" aria-hidden="true" tabindex="-1"></a>n_classifications <span class="ot">&lt;-</span> <span class="fu">length</span>(<span class="fu">unique</span>(hv_family_counts_display<span class="sc">$</span>classification)) <span class="sc">-</span> <span class="dv">1</span></span>
-<span id="cb6-25"><a href="#cb6-25" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-26"><a href="#cb6-26" aria-hidden="true" tabindex="-1"></a>custom_palette_with_black <span class="ot">&lt;-</span> <span class="fu">c</span>(</span>
-<span id="cb6-27"><a href="#cb6-27" aria-hidden="true" tabindex="-1"></a>  custom_palette[<span class="dv">1</span><span class="sc">:</span>n_classifications],</span>
-<span id="cb6-28"><a href="#cb6-28" aria-hidden="true" tabindex="-1"></a>  <span class="st">"black"</span></span>
-<span id="cb6-29"><a href="#cb6-29" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb6-30"><a href="#cb6-30" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-31"><a href="#cb6-31" aria-hidden="true" tabindex="-1"></a><span class="co"># Get most prominent families for text</span></span>
-<span id="cb6-32"><a href="#cb6-32" aria-hidden="true" tabindex="-1"></a>hv_family_collate <span class="ot">&lt;-</span> hv_family_counts <span class="sc">%&gt;%</span></span>
-<span id="cb6-33"><a href="#cb6-33" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(name, taxid, dataset) <span class="sc">%&gt;%</span> </span>
-<span id="cb6-34"><a href="#cb6-34" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarize</span>(<span class="at">n_reads_tot =</span> <span class="fu">sum</span>(n_reads_hv),</span>
-<span id="cb6-35"><a href="#cb6-35" aria-hidden="true" tabindex="-1"></a>            <span class="at">p_reads_max =</span> <span class="fu">max</span>(p_reads_hv), <span class="at">.groups=</span><span class="st">"drop"</span>) <span class="sc">%&gt;%</span> </span>
-<span id="cb6-36"><a href="#cb6-36" aria-hidden="true" tabindex="-1"></a>  <span class="fu">arrange</span>(<span class="fu">desc</span>(n_reads_tot))</span>
-<span id="cb6-37"><a href="#cb6-37" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-38"><a href="#cb6-38" aria-hidden="true" tabindex="-1"></a>g_hv_family <span class="ot">&lt;-</span> g_comp_base_study <span class="sc">+</span> </span>
-<span id="cb6-39"><a href="#cb6-39" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_col</span>(<span class="at">data=</span>hv_family_counts_display, <span class="at">position =</span> <span class="st">"stack"</span>, <span class="at">width=</span><span class="dv">1</span>) <span class="sc">+</span></span>
-<span id="cb6-40"><a href="#cb6-40" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_y_continuous</span>(<span class="at">name=</span><span class="st">"% HV Reads"</span>, <span class="at">limits=</span><span class="fu">c</span>(<span class="dv">0</span>,<span class="fl">1.01</span>), </span>
-<span id="cb6-41"><a href="#cb6-41" aria-hidden="true" tabindex="-1"></a>                     <span class="at">breaks =</span> <span class="fu">seq</span>(<span class="dv">0</span>,<span class="dv">1</span>,<span class="fl">0.2</span>),</span>
-<span id="cb6-42"><a href="#cb6-42" aria-hidden="true" tabindex="-1"></a>                     <span class="at">expand=</span><span class="fu">c</span>(<span class="dv">0</span>,<span class="dv">0</span>), <span class="at">labels =</span> <span class="cf">function</span>(y) y<span class="sc">*</span><span class="dv">100</span>) <span class="sc">+</span></span>
-<span id="cb6-43"><a href="#cb6-43" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_fill_manual</span>(<span class="at">values =</span> custom_palette_with_black, <span class="at">name =</span> <span class="st">"Viral family"</span>) <span class="sc">+</span></span>
-<span id="cb6-44"><a href="#cb6-44" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title=</span><span class="st">"Family composition of human-viral reads"</span>) <span class="sc">+</span></span>
-<span id="cb6-45"><a href="#cb6-45" aria-hidden="true" tabindex="-1"></a>  <span class="fu">guides</span>(<span class="at">fill=</span><span class="fu">guide_legend</span>(<span class="at">ncol=</span><span class="dv">4</span>)) <span class="sc">+</span></span>
-<span id="cb6-46"><a href="#cb6-46" aria-hidden="true" tabindex="-1"></a><span class="co">#  facet_grid(~dataset + sample_type, scales="free_x") +</span></span>
-<span id="cb6-47"><a href="#cb6-47" aria-hidden="true" tabindex="-1"></a>  theme_kit <span class="sc">+</span> </span>
-<span id="cb6-48"><a href="#cb6-48" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme</span>(</span>
-<span id="cb6-49"><a href="#cb6-49" aria-hidden="true" tabindex="-1"></a>    <span class="at">plot.title =</span> <span class="fu">element_text</span>(<span class="at">size=</span><span class="fu">rel</span>(<span class="fl">1.4</span>), <span class="at">hjust=</span><span class="dv">0</span>, <span class="at">face=</span><span class="st">"plain"</span>)</span>
-<span id="cb6-50"><a href="#cb6-50" aria-hidden="true" tabindex="-1"></a>    ) <span class="sc">+</span> </span>
-<span id="cb6-51"><a href="#cb6-51" aria-hidden="true" tabindex="-1"></a>    <span class="fu">coord_flip</span>()</span>
-<span id="cb6-52"><a href="#cb6-52" aria-hidden="true" tabindex="-1"></a>g_hv_family</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-</details>
-<div class="cell-output-display">
-<div>
-<figure class="figure">
-<p><img src="2024-09-24-blog3-preanalysis_files/figure-html/explore-hv-family-study-1.svg" class="img-fluid figure-img"></p>
-</figure>
-</div>
-</div>
-<details class="code-fold">
-<summary>Code</summary>
-<div class="sourceCode cell-code" id="cb7"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="co">#ggsave("/Users/harmonbhasin/work/securebio/blogs/blog_3/hv_family_study.png", g_hv_family, width = 15, height = 5)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-</details>
-</div>
 <p>Comparing individual studies to each other, we see that there is a wide range of human-infecting virus depending on the study, even within the same sample type.</p>
 </section>
 <section id="species-composition" class="level3" data-number="4.2.3">
 <h3 data-number="4.2.3" class="anchored" data-anchor-id="species-composition"><span class="header-section-number">4.2.3</span> Species composition</h3>
 <div class="cell">
-<details class="code-fold">
-<summary>Code</summary>
-<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>dataset_hv_reads_species <span class="ot">&lt;-</span> hv_reads_species <span class="sc">%&gt;%</span></span>
-<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(name, taxid, dataset, sample) <span class="sc">%&gt;%</span></span>
-<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">count</span>(<span class="at">name =</span> <span class="st">"n_reads_hv"</span>)</span>
-<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>all_dataset_ra <span class="ot">&lt;-</span> read_counts_raw <span class="sc">%&gt;%</span></span>
-<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">left_join</span>(dataset_hv_reads_species, <span class="at">by=</span><span class="fu">c</span>(<span class="st">"sample"</span>)) <span class="sc">%&gt;%</span></span>
-<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">n_reads_hv =</span> <span class="fu">replace_na</span>(n_reads_hv, <span class="dv">0</span>)) <span class="sc">%&gt;%</span></span>
-<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">left_join</span>(libraries, <span class="at">by=</span><span class="fu">c</span>(<span class="st">"sample"</span>, <span class="st">"dataset"</span>)) <span class="sc">%&gt;%</span></span>
-<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">ra =</span> n_reads_hv <span class="sc">/</span> n_reads_raw)</span>
-<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb8-11"><a href="#cb8-11" aria-hidden="true" tabindex="-1"></a>filtered_dataset_ra <span class="ot">&lt;-</span> all_dataset_ra <span class="sc">%&gt;%</span></span>
-<span id="cb8-12"><a href="#cb8-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(name <span class="sc">%in%</span> viruses_of_interest) <span class="sc">%&gt;%</span></span>
-<span id="cb8-13"><a href="#cb8-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(ra <span class="sc">!=</span> <span class="dv">0</span>) <span class="sc">%&gt;%</span></span>
-<span id="cb8-14"><a href="#cb8-14" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">common_name =</span> viruses_of_interest_common[<span class="fu">match</span>(name, viruses_of_interest)]) <span class="sc">%&gt;%</span></span>
-<span id="cb8-15"><a href="#cb8-15" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">name =</span> common_name) <span class="sc">%&gt;%</span></span>
-<span id="cb8-16"><a href="#cb8-16" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(<span class="sc">-</span>common_name)</span>
-<span id="cb8-17"><a href="#cb8-17" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb8-18"><a href="#cb8-18" aria-hidden="true" tabindex="-1"></a><span class="co"># Once again, we filter for samples with 0 reads</span></span>
-<span id="cb8-19"><a href="#cb8-19" aria-hidden="true" tabindex="-1"></a>g_hv_species <span class="ot">&lt;-</span> <span class="fu">ggplot</span>(filtered_dataset_ra, <span class="fu">aes</span>(<span class="at">x =</span> name, <span class="at">y =</span> ra, <span class="at">color =</span> sample_type, <span class="at">shape=</span>dataset)) <span class="sc">+</span></span>
-<span id="cb8-20"><a href="#cb8-20" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_quasirandom</span>(<span class="at">method =</span> <span class="st">"quasirandom"</span>, <span class="at">size =</span><span class="dv">1</span>) <span class="sc">+</span></span>
-<span id="cb8-21"><a href="#cb8-21" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_y_log10</span>(<span class="at">labels =</span> <span class="fu">label_log</span>(<span class="at">digits =</span> <span class="dv">3</span>)) <span class="sc">+</span></span>
-<span id="cb8-22"><a href="#cb8-22" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_color_brewer</span>(<span class="at">palette =</span> <span class="st">"Dark2"</span>) <span class="sc">+</span></span>
-<span id="cb8-23"><a href="#cb8-23" aria-hidden="true" tabindex="-1"></a>  theme_kit <span class="sc">+</span></span>
-<span id="cb8-24"><a href="#cb8-24" aria-hidden="true" tabindex="-1"></a>  <span class="fu">coord_flip</span>()</span>
-<span id="cb8-25"><a href="#cb8-25" aria-hidden="true" tabindex="-1"></a>g_hv_species</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-</details>
 <div class="cell-output-display">
-<div>
+<div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="2024-09-24-blog3-preanalysis_files/figure-html/hv-species-1.svg" class="img-fluid figure-img"></p>
+<p><img src="2024-09-24-blog3-preanalysis_files/figure-html/hv-species-1.svg?" class="img-fluid figure-img"></p>
+<figcaption><strong>Figure 4</strong>: Relative abundance of <em>selected</em> human-infecting viruses in each dataset</figcaption>
 </figure>
 </div>
 </div>
-<details class="code-fold">
-<summary>Code</summary>
-<div class="sourceCode cell-code" id="cb9"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="co">#ggsave("/Users/harmonbhasin/work/securebio/blogs/blog_3/hv_species.png", g_hv_species, width = 15, height = 10)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-</details>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="2024-09-24-blog3-preanalysis_files/figure-html/hv-species-without-human-reads-1.svg?" class="img-fluid figure-img"></p>
+<figcaption><strong>Figure 5</strong>: Relative abundance of <em>selected</em> human-infecting viruses in each dataset without human reads</figcaption>
+</figure>
+</div>
+</div>
 </div>
 <p>To gain a more granular understanding of each sample type, we can look at the relative abundance of specific viruses in each sample type that may be of interest (totalling to 22): those that are linked to disease, characterized by latent infections (this is in accordance to the NAO’s interest to detecting “stealth” pandemics), and those that are blood-borne. We get a wide range of human infecting viruses including Hepatitis, HIV, Herpes, and HPV. Importantly, most viruses seem to be detected in both sample types. When comparing the coverage of all viruses in each sample type, we see that plasma contains 104 unique viruses, whereas whole blood only countains about 56. However, when looking at these closely, we see that the majority of viruses captured by plasma all come from Anellovirdae, a non-harmful family of viruses. When we only look at the viruses specified above, we find that plasma contains 18 out of the 22 viruses, whereas whole blood contains 17 out of the 22 viruses. Specifically, plasma uniquely contains HBV, whereas whole blood uniquely contains HTLV-1 and HTLV-2.</p>
 </section>
@@ -717,8 +598,6 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <section id="conclusion" class="level1" data-number="6">
 <h1 data-number="6"><span class="header-section-number">6</span> Conclusion</h1>
 
-
-<!-- -->
 
 </section>
 
@@ -812,57 +691,6 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
       container: window.document.getElementById('quarto-embedded-source-code-modal')
     });
     clipboardModal.on('success', onCopySuccess);
-  }
-  const viewSource = window.document.getElementById('quarto-view-source') ||
-                     window.document.getElementById('quarto-code-tools-source');
-  if (viewSource) {
-    const sourceUrl = viewSource.getAttribute("data-quarto-source-url");
-    viewSource.addEventListener("click", function(e) {
-      if (sourceUrl) {
-        // rstudio viewer pane
-        if (/\bcapabilities=\b/.test(window.location)) {
-          window.open(sourceUrl);
-        } else {
-          window.location.href = sourceUrl;
-        }
-      } else {
-        const modal = new bootstrap.Modal(document.getElementById('quarto-embedded-source-code-modal'));
-        modal.show();
-      }
-      return false;
-    });
-  }
-  function toggleCodeHandler(show) {
-    return function(e) {
-      const detailsSrc = window.document.querySelectorAll(".cell > details > .sourceCode");
-      for (let i=0; i<detailsSrc.length; i++) {
-        const details = detailsSrc[i].parentElement;
-        if (show) {
-          details.open = true;
-        } else {
-          details.removeAttribute("open");
-        }
-      }
-      const cellCodeDivs = window.document.querySelectorAll(".cell > .sourceCode");
-      const fromCls = show ? "hidden" : "unhidden";
-      const toCls = show ? "unhidden" : "hidden";
-      for (let i=0; i<cellCodeDivs.length; i++) {
-        const codeDiv = cellCodeDivs[i];
-        if (codeDiv.classList.contains(fromCls)) {
-          codeDiv.classList.remove(fromCls);
-          codeDiv.classList.add(toCls);
-        } 
-      }
-      return false;
-    }
-  }
-  const hideAllCode = window.document.getElementById("quarto-hide-all-code");
-  if (hideAllCode) {
-    hideAllCode.addEventListener("click", toggleCodeHandler(false));
-  }
-  const showAllCode = window.document.getElementById("quarto-show-all-code");
-  if (showAllCode) {
-    showAllCode.addEventListener("click", toggleCodeHandler(true));
   }
     var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
     var mailtoRegex = new RegExp(/^mailto:/);
@@ -1193,693 +1021,7 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
     }
   }
 });
-</script><div class="modal fade" id="quarto-embedded-source-code-modal" tabindex="-1" aria-labelledby="quarto-embedded-source-code-modal-label" aria-hidden="true"><div class="modal-dialog modal-dialog-scrollable"><div class="modal-content"><div class="modal-header"><h5 class="modal-title" id="quarto-embedded-source-code-modal-label">Source Code</h5><button class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="">
-<div class="sourceCode" id="cb10" data-shortcodes="false"><pre class="sourceCode markdown code-with-copy"><code class="sourceCode markdown"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="co">---</span></span>
-<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a><span class="an">title:</span><span class="co"> "Blog 3: Pre-analysis"</span></span>
-<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a><span class="an">subtitle:</span><span class="co"> "Combined whole blood and plasma analysis"</span></span>
-<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a><span class="an">author:</span><span class="co"> "Harmon Bhasin"</span></span>
-<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a><span class="an">date:</span><span class="co"> 2024-09-24</span></span>
-<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a><span class="an">format:</span></span>
-<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a><span class="co">  html:</span></span>
-<span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a><span class="co">    toc: true </span></span>
-<span id="cb10-9"><a href="#cb10-9" aria-hidden="true" tabindex="-1"></a><span class="co">    toc-title: "Table of contents" </span></span>
-<span id="cb10-10"><a href="#cb10-10" aria-hidden="true" tabindex="-1"></a><span class="co">    number-sections: true </span></span>
-<span id="cb10-11"><a href="#cb10-11" aria-hidden="true" tabindex="-1"></a><span class="co">    number-depth: 3 </span></span>
-<span id="cb10-12"><a href="#cb10-12" aria-hidden="true" tabindex="-1"></a><span class="co">    toc-location: right </span></span>
-<span id="cb10-13"><a href="#cb10-13" aria-hidden="true" tabindex="-1"></a><span class="co">    page-layout: full </span></span>
-<span id="cb10-14"><a href="#cb10-14" aria-hidden="true" tabindex="-1"></a><span class="co">    code-fold: true </span></span>
-<span id="cb10-15"><a href="#cb10-15" aria-hidden="true" tabindex="-1"></a><span class="co">    code-tools: true </span></span>
-<span id="cb10-16"><a href="#cb10-16" aria-hidden="true" tabindex="-1"></a><span class="co">    df-print: paged </span></span>
-<span id="cb10-17"><a href="#cb10-17" aria-hidden="true" tabindex="-1"></a><span class="co">    fig-format: svg</span></span>
-<span id="cb10-18"><a href="#cb10-18" aria-hidden="true" tabindex="-1"></a><span class="an">editor:</span><span class="co"> </span></span>
-<span id="cb10-19"><a href="#cb10-19" aria-hidden="true" tabindex="-1"></a><span class="co">  visual: true</span></span>
-<span id="cb10-20"><a href="#cb10-20" aria-hidden="true" tabindex="-1"></a><span class="co">  render-on-save: false</span></span>
-<span id="cb10-21"><a href="#cb10-21" aria-hidden="true" tabindex="-1"></a><span class="an">comments:</span></span>
-<span id="cb10-22"><a href="#cb10-22" aria-hidden="true" tabindex="-1"></a><span class="co">  hypothesis: true </span></span>
-<span id="cb10-23"><a href="#cb10-23" aria-hidden="true" tabindex="-1"></a><span class="an">execute:</span><span class="co"> </span></span>
-<span id="cb10-24"><a href="#cb10-24" aria-hidden="true" tabindex="-1"></a><span class="co">  freeze: auto</span></span>
-<span id="cb10-25"><a href="#cb10-25" aria-hidden="true" tabindex="-1"></a><span class="co">  cache: true</span></span>
-<span id="cb10-26"><a href="#cb10-26" aria-hidden="true" tabindex="-1"></a><span class="an">title-block-banner:</span><span class="co"> "#de2d26"</span></span>
-<span id="cb10-27"><a href="#cb10-27" aria-hidden="true" tabindex="-1"></a><span class="co">---</span></span>
-<span id="cb10-28"><a href="#cb10-28" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-29"><a href="#cb10-29" aria-hidden="true" tabindex="-1"></a><span class="fu"># Introduction</span></span>
-<span id="cb10-30"><a href="#cb10-30" aria-hidden="true" tabindex="-1"></a>In our <span class="co">[</span><span class="ot">previous post</span><span class="co">](https://naobservatory.org/blog/exploring-blood-biosurveillance-part2)</span>, we identfied four sampling strategies, each coming from either whole blood or plasma. To take this analysis a step further, we analyze the metagenomic sequencing data from various whole blood and plasma based studies. This analysis will help us understand the last piece missing from the puzzle: what viruses are present and detectable in whole blood and plasma using metagenomic sequencing and how do both sample types compare to each other.</span>
-<span id="cb10-31"><a href="#cb10-31" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-32"><a href="#cb10-32" aria-hidden="true" tabindex="-1"></a>We performed a literature search for large (&gt;100M read pairs), untargeted whole blood and plasma metagenomic studies. We identified 6 such datasets (Table 1), obtained the raw sequencing data, and processed it with a Kraken2-based computational pipeline to estimate the relative abundance of human-infecting viruses (Methods).  </span>
-<span id="cb10-33"><a href="#cb10-33" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-34"><a href="#cb10-34" aria-hidden="true" tabindex="-1"></a><span class="fu"># Data</span></span>
-<span id="cb10-35"><a href="#cb10-35" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-36"><a href="#cb10-36" aria-hidden="true" tabindex="-1"></a>| **Study**                    | **Sample type** | **Viral Enrichment** | **Sequencing type** | **Country** | **Read pairs** | **Reference**                                  |</span>
-<span id="cb10-37"><a href="#cb10-37" aria-hidden="true" tabindex="-1"></a>|------------------------------|-----------------|----------------------|---------------------|-------------|----------------|------------------------------------------------|</span>
-<span id="cb10-38"><a href="#cb10-38" aria-hidden="true" tabindex="-1"></a>| Cebria-Mendoza et al. (2021) | Plasma          | Yes                  | DNA + RNA           | Spain       | 230M           | <span class="co">[</span><span class="ot">link</span><span class="co">](https://doi.org/10.3390/v13112322)</span>              |</span>
-<span id="cb10-39"><a href="#cb10-39" aria-hidden="true" tabindex="-1"></a>| Thijssen et al. (2023)       | Plasma          | No                   | DNA + RNA           | Iran        | 116M           | <span class="co">[</span><span class="ot">link</span><span class="co">](https://doi.org/10.3390/v15071425)</span>              |</span>
-<span id="cb10-40"><a href="#cb10-40" aria-hidden="true" tabindex="-1"></a>| Mengyi et al. (2023)         | Plasma          | No                   | DNA                 | China       | 3.4B           | <span class="co">[</span><span class="ot">link</span><span class="co">](https://doi.org/10.1016%2Fj.onehlt.2023.100602)</span> |</span>
-<span id="cb10-41"><a href="#cb10-41" aria-hidden="true" tabindex="-1"></a>| Thompson et al. (2023)       | Whole blood     | No                   | RNA                 | USA         | 27.7B          | <span class="co">[</span><span class="ot">link</span><span class="co">](https://doi.org/10.1038/s41591-022-02107-4)</span>     |</span>
-<span id="cb10-42"><a href="#cb10-42" aria-hidden="true" tabindex="-1"></a>| O'Connell et al. (2023)      | Whole blood     | No                   | RNA                 | USA         | 3.1B           | <span class="co">[</span><span class="ot">link</span><span class="co">](https://doi.org/10.1186/s12863-024-01223-z)</span>     |</span>
-<span id="cb10-43"><a href="#cb10-43" aria-hidden="true" tabindex="-1"></a>| Aydillo et al. (2022)        | Whole blood     | No                   | RNA                 | USA         | 1.7B           | <span class="co">[</span><span class="ot">link</span><span class="co">](https://doi.org/10.1038/s41541-022-00583-w)</span>     |</span>
-<span id="cb10-44"><a href="#cb10-44" aria-hidden="true" tabindex="-1"></a>: **Table 1**: Studies included in the analysis. {.striped .hover}</span>
-<span id="cb10-45"><a href="#cb10-45" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-46"><a href="#cb10-46" aria-hidden="true" tabindex="-1"></a><span class="fu">## Plasma</span></span>
-<span id="cb10-47"><a href="#cb10-47" aria-hidden="true" tabindex="-1"></a><span class="fu">### Cebria-Mendoza et al. (2021)</span></span>
-<span id="cb10-48"><a href="#cb10-48" aria-hidden="true" tabindex="-1"></a>This dataset from Spain has 60 samples, each derived from plasma pools of 8-13 people from Spain. In total, 567 healthy individuals contributed to these pools. For each pooled sample, a combined DNA and RNA library preparation was performed, resulting in a single sequencing output that captures both nucleic acid types. This approach provides comprehensive genetic information but precludes separate analysis of DNA and RNA from individual samples.</span>
-<span id="cb10-49"><a href="#cb10-49" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-50"><a href="#cb10-50" aria-hidden="true" tabindex="-1"></a>*Full analysis can be found [here](https://data.securebio.org/harmons-public-notebook/notebooks/2024-07-08_cebria-mendoza.html)*</span>
-<span id="cb10-51"><a href="#cb10-51" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-52"><a href="#cb10-52" aria-hidden="true" tabindex="-1"></a><span class="fu">### Thijssen et al. (2023)</span></span>
-<span id="cb10-53"><a href="#cb10-53" aria-hidden="true" tabindex="-1"></a>This dataset from Iran has 21 samples, each derived from plasma pools of 5 people from Iran. In total, 100 healthy individuals contributed to these pools. For each pooled sample, a combined DNA and RNA library preparation was performed, resulting in a single sequencing output that captures both nucleic acid types, with Illumina NextSeq 500, producing 2x150 bp reads.</span>
-<span id="cb10-54"><a href="#cb10-54" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-55"><a href="#cb10-55" aria-hidden="true" tabindex="-1"></a>*Full analysis can be found [here](https://data.securebio.org/harmons-public-notebook/notebooks/2024-07-22-thijssen.html)*</span>
-<span id="cb10-56"><a href="#cb10-56" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-57"><a href="#cb10-57" aria-hidden="true" tabindex="-1"></a><span class="fu">### Mengyi et al. (2023)</span></span>
-<span id="cb10-58"><a href="#cb10-58" aria-hidden="true" tabindex="-1"></a>This dataset from China has 201 samples, each derived from plasma pools of 160 donations from 7 different locations between 2012-2018. In total, 10,720 donations contributed to these pools (we do not know the number of individuals). They did DNA-sequencing for each pool, with Illumina HiSeq 4500, producing 2x150 bp reads.</span>
-<span id="cb10-59"><a href="#cb10-59" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-60"><a href="#cb10-60" aria-hidden="true" tabindex="-1"></a>*Full analysis can be found [here](https://data.securebio.org/harmons-public-notebook/notebooks/2024-07-23-mengyi.html)*</span>
-<span id="cb10-61"><a href="#cb10-61" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-62"><a href="#cb10-62" aria-hidden="true" tabindex="-1"></a><span class="fu">## Whole blood</span></span>
-<span id="cb10-63"><a href="#cb10-63" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-64"><a href="#cb10-64" aria-hidden="true" tabindex="-1"></a><span class="fu">### Thompson et al. (2023)</span></span>
-<span id="cb10-65"><a href="#cb10-65" aria-hidden="true" tabindex="-1"></a>This dataset from the USA has 417 samples, with 353 individuals positive for SARS-CoV-2 and 65 individuals negative, for a total of 418 individuals. They did RNA-sequencing for each sample, with Illumina NovaSeq 6000, producing 2x100 bp reads.</span>
-<span id="cb10-66"><a href="#cb10-66" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-67"><a href="#cb10-67" aria-hidden="true" tabindex="-1"></a>*Full analysis is in progress*</span>
-<span id="cb10-68"><a href="#cb10-68" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-69"><a href="#cb10-69" aria-hidden="true" tabindex="-1"></a><span class="fu">### O'Connell et al. (2023)</span></span>
-<span id="cb10-70"><a href="#cb10-70" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-71"><a href="#cb10-71" aria-hidden="true" tabindex="-1"></a>This dataset from the USA has 138 samples, with 138 individuals presenting to the emergency department with symptoms or complications. They did RNA-sequencing for each sample using Illumina NovaSeq 6000, producing 2x150 bp reads.</span>
-<span id="cb10-72"><a href="#cb10-72" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-73"><a href="#cb10-73" aria-hidden="true" tabindex="-1"></a>*Full analysis is in progress*</span>
-<span id="cb10-74"><a href="#cb10-74" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-75"><a href="#cb10-75" aria-hidden="true" tabindex="-1"></a><span class="fu">### Aydillo et al. (2022)</span></span>
-<span id="cb10-76"><a href="#cb10-76" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-77"><a href="#cb10-77" aria-hidden="true" tabindex="-1"></a>This dataset from the USA has 53 samples, with 53 healthy individuals. They did RNA-sequencing for each sample, with Illumina NovaSeq 6000, producing 2 x 95 bp reads.</span>
-<span id="cb10-78"><a href="#cb10-78" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-79"><a href="#cb10-79" aria-hidden="true" tabindex="-1"></a>*Full analysis is in progress*</span>
-<span id="cb10-80"><a href="#cb10-80" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-81"><a href="#cb10-81" aria-hidden="true" tabindex="-1"></a><span class="fu"># Methods</span></span>
-<span id="cb10-82"><a href="#cb10-82" aria-hidden="true" tabindex="-1"></a>The pipeline for analysis was developed by William Bradshaw, and slightly modifyed by me. It can be found <span class="co">[</span><span class="ot">here</span><span class="co">](https://github.com/harmonbhasin/mgs-workflow)</span>. Here is a brief description of the pipeline, taken directly from the README:</span>
-<span id="cb10-83"><a href="#cb10-83" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-84"><a href="#cb10-84" aria-hidden="true" tabindex="-1"></a><span class="at">&gt; The run workflow then consists of four phases:</span></span>
-<span id="cb10-85"><a href="#cb10-85" aria-hidden="true" tabindex="-1"></a><span class="at">&gt;</span></span>
-<span id="cb10-86"><a href="#cb10-86" aria-hidden="true" tabindex="-1"></a><span class="at">&gt; 1. A preprocessing phase, in which input files undergo adapter &amp; quality trimming, deduplication, and ribodepletion.</span></span>
-<span id="cb10-87"><a href="#cb10-87" aria-hidden="true" tabindex="-1"></a><span class="at">&gt; 2. A taxonomic profiling phase, in which Kraken2 is used to assess the overall taxonomic composition of the input data and assess how it changes across different steps in the preprocessing phase.</span></span>
-<span id="cb10-88"><a href="#cb10-88" aria-hidden="true" tabindex="-1"></a><span class="at">&gt; 3. A viral identification phase, in which a custom multi-step pipeline based around Bowtie2 and Kraken2 is used to sensitively and specifically identify human-infecting virus (HV) reads in the input data for downstream analysis.</span></span>
-<span id="cb10-89"><a href="#cb10-89" aria-hidden="true" tabindex="-1"></a><span class="at">&gt; 4. A final QC and output phase, in which FASTQC, MultiQC and other tools are used to assess the quality of the data produced by the pipeline at various steps and produce summarized output data for downstream analysis and visualization.</span></span>
-<span id="cb10-90"><a href="#cb10-90" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-91"><a href="#cb10-91" aria-hidden="true" tabindex="-1"></a><span class="al">![Diagram of the analysis pipeline (we do not use the BLAST Validation and only use FASTP for quality trimming and cleaning).](https://github.com/harmonbhasin/mgs-workflow/blob/master/readme-workflow-diagram.png)</span></span>
-<span id="cb10-92"><a href="#cb10-92" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-93"><a href="#cb10-93" aria-hidden="true" tabindex="-1"></a><span class="fu"># Results</span></span>
-<span id="cb10-96"><a href="#cb10-96" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
-<span id="cb10-97"><a href="#cb10-97" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: load-packages</span></span>
-<span id="cb10-98"><a href="#cb10-98" aria-hidden="true" tabindex="-1"></a><span class="co">#| include: false</span></span>
-<span id="cb10-99"><a href="#cb10-99" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-100"><a href="#cb10-100" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(pacman)</span>
-<span id="cb10-101"><a href="#cb10-101" aria-hidden="true" tabindex="-1"></a>pacman<span class="sc">::</span><span class="fu">p_load</span>(tidyverse, RColorBrewer, forcats, scales, ggbeeswarm, knitr)</span>
-<span id="cb10-102"><a href="#cb10-102" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-103"><a href="#cb10-103" aria-hidden="true" tabindex="-1"></a><span class="fu">source</span>(<span class="st">"/Users/harmonbhasin/work/securebio/sampling-strategies/scripts/aux_plot-theme.R"</span>)</span>
-<span id="cb10-104"><a href="#cb10-104" aria-hidden="true" tabindex="-1"></a>theme_base <span class="ot">&lt;-</span> theme_base <span class="sc">+</span> <span class="fu">theme</span>(<span class="at">aspect.ratio =</span> <span class="cn">NULL</span>)</span>
-<span id="cb10-105"><a href="#cb10-105" aria-hidden="true" tabindex="-1"></a>theme_kit <span class="ot">&lt;-</span> theme_base <span class="sc">+</span> <span class="fu">theme</span>(</span>
-<span id="cb10-106"><a href="#cb10-106" aria-hidden="true" tabindex="-1"></a>  <span class="at">axis.text.x =</span> <span class="fu">element_text</span>(<span class="at">hjust =</span> <span class="dv">1</span>, <span class="at">angle =</span> <span class="dv">45</span>),</span>
-<span id="cb10-107"><a href="#cb10-107" aria-hidden="true" tabindex="-1"></a>  <span class="at">axis.title.x =</span> <span class="fu">element_blank</span>(),</span>
-<span id="cb10-108"><a href="#cb10-108" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb10-109"><a href="#cb10-109" aria-hidden="true" tabindex="-1"></a>tnl <span class="ot">&lt;-</span> <span class="fu">theme</span>(<span class="at">legend.position =</span> <span class="st">"none"</span>)</span>
-<span id="cb10-110"><a href="#cb10-110" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb10-111"><a href="#cb10-111" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-114"><a href="#cb10-114" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
-<span id="cb10-115"><a href="#cb10-115" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: set-up-paths</span></span>
-<span id="cb10-116"><a href="#cb10-116" aria-hidden="true" tabindex="-1"></a><span class="co">#| include: false</span></span>
-<span id="cb10-117"><a href="#cb10-117" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-118"><a href="#cb10-118" aria-hidden="true" tabindex="-1"></a><span class="co"># Data input paths</span></span>
-<span id="cb10-119"><a href="#cb10-119" aria-hidden="true" tabindex="-1"></a>datasets <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">"cebriamendoza2021"</span>, <span class="st">"thijssen2023"</span>, <span class="st">"mengyi2023"</span>,  <span class="st">"thompson2023"</span>,<span class="st">"oconnell2023"</span>, <span class="st">"aydillo2022"</span>)</span>
-<span id="cb10-120"><a href="#cb10-120" aria-hidden="true" tabindex="-1"></a>sample_types <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">"plasma"</span>, <span class="st">"plasma"</span>, <span class="st">"plasma"</span>, <span class="st">"whole-blood"</span>, <span class="st">"whole-blood"</span>, <span class="st">"whole-blood"</span>)</span>
-<span id="cb10-121"><a href="#cb10-121" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-122"><a href="#cb10-122" aria-hidden="true" tabindex="-1"></a>data_base <span class="ot">&lt;-</span> <span class="st">"/Users/harmonbhasin/work/securebio/nao-harmon/"</span></span>
-<span id="cb10-123"><a href="#cb10-123" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-124"><a href="#cb10-124" aria-hidden="true" tabindex="-1"></a>data_dir <span class="ot">&lt;-</span> <span class="fu">file.path</span>(data_base, datasets)</span>
-<span id="cb10-125"><a href="#cb10-125" aria-hidden="true" tabindex="-1"></a>input_dirs <span class="ot">&lt;-</span> <span class="fu">file.path</span>(data_dir, <span class="st">"analysis/data/input"</span>)</span>
-<span id="cb10-126"><a href="#cb10-126" aria-hidden="true" tabindex="-1"></a>results_dirs <span class="ot">&lt;-</span> <span class="fu">file.path</span>(data_dir, <span class="st">"analysis/data/results"</span>)</span>
-<span id="cb10-127"><a href="#cb10-127" aria-hidden="true" tabindex="-1"></a>qc_dirs <span class="ot">&lt;-</span> <span class="fu">file.path</span>(results_dirs, <span class="st">"qc"</span>)</span>
-<span id="cb10-128"><a href="#cb10-128" aria-hidden="true" tabindex="-1"></a>hv_dirs <span class="ot">&lt;-</span> <span class="fu">file.path</span>(results_dirs, <span class="st">"hv"</span>)</span>
-<span id="cb10-129"><a href="#cb10-129" aria-hidden="true" tabindex="-1"></a>libraries_paths <span class="ot">&lt;-</span> <span class="fu">file.path</span>(input_dirs, <span class="st">"libraries.csv"</span>)</span>
-<span id="cb10-130"><a href="#cb10-130" aria-hidden="true" tabindex="-1"></a>basic_stats_paths <span class="ot">&lt;-</span> <span class="fu">file.path</span>(qc_dirs, <span class="st">"qc_basic_stats.tsv.gz"</span>)</span>
-<span id="cb10-131"><a href="#cb10-131" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb10-132"><a href="#cb10-132" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-135"><a href="#cb10-135" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
-<span id="cb10-136"><a href="#cb10-136" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: load-libraries</span></span>
-<span id="cb10-137"><a href="#cb10-137" aria-hidden="true" tabindex="-1"></a><span class="co">#| include: false</span></span>
-<span id="cb10-138"><a href="#cb10-138" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-139"><a href="#cb10-139" aria-hidden="true" tabindex="-1"></a>low_sample_number <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">'SRR21924256'</span>)</span>
-<span id="cb10-140"><a href="#cb10-140" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-141"><a href="#cb10-141" aria-hidden="true" tabindex="-1"></a>libraries <span class="ot">&lt;-</span> purrr<span class="sc">::</span><span class="fu">map2</span>(libraries_paths, <span class="fu">seq_along</span>(datasets), <span class="sc">~</span><span class="fu">read_csv</span>(.x, <span class="at">show_col_types =</span> <span class="cn">FALSE</span>) <span class="sc">%&gt;%</span> <span class="fu">mutate</span>(<span class="at">dataset =</span> datasets[.y], <span class="at">sample_type =</span> sample_types[.y])) <span class="sc">%&gt;%</span> <span class="fu">bind_rows</span>() <span class="sc">%&gt;%</span></span>
-<span id="cb10-142"><a href="#cb10-142" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">sample_type =</span> <span class="fu">factor</span>(sample_type)) <span class="sc">%&gt;%</span></span>
-<span id="cb10-143"><a href="#cb10-143" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">dataset =</span> <span class="fu">factor</span>(dataset, <span class="at">levels =</span> datasets)) <span class="sc">%&gt;%</span></span>
-<span id="cb10-144"><a href="#cb10-144" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(<span class="sc">!</span>sample <span class="sc">%in%</span> low_sample_number)</span>
-<span id="cb10-145"><a href="#cb10-145" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb10-146"><a href="#cb10-146" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-149"><a href="#cb10-149" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
-<span id="cb10-150"><a href="#cb10-150" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: import-stats</span></span>
-<span id="cb10-151"><a href="#cb10-151" aria-hidden="true" tabindex="-1"></a><span class="co">#| include: false</span></span>
-<span id="cb10-152"><a href="#cb10-152" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-153"><a href="#cb10-153" aria-hidden="true" tabindex="-1"></a>basic_stats <span class="ot">&lt;-</span> <span class="fu">lapply</span>(basic_stats_paths, read_tsv, <span class="at">show_col_types =</span> <span class="cn">FALSE</span>) <span class="sc">%&gt;%</span></span>
-<span id="cb10-154"><a href="#cb10-154" aria-hidden="true" tabindex="-1"></a>  <span class="fu">bind_rows</span>() <span class="sc">%&gt;%</span></span>
-<span id="cb10-155"><a href="#cb10-155" aria-hidden="true" tabindex="-1"></a>  <span class="fu">inner_join</span>(libraries, <span class="at">by=</span><span class="st">"sample"</span>) <span class="sc">%&gt;%</span> <span class="fu">arrange</span>(sample) <span class="sc">%&gt;%</span></span>
-<span id="cb10-156"><a href="#cb10-156" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">stage =</span> <span class="fu">factor</span>(stage, <span class="at">levels =</span> <span class="fu">c</span>(<span class="st">"raw_concat"</span>, <span class="st">"cleaned"</span>, <span class="st">"dedup"</span>, <span class="st">"ribo_initial"</span>, <span class="st">"ribo_secondary"</span>)),</span>
-<span id="cb10-157"><a href="#cb10-157" aria-hidden="true" tabindex="-1"></a>         <span class="at">sample =</span> <span class="fu">fct_inorder</span>(sample)) <span class="sc">%&gt;%</span></span>
-<span id="cb10-158"><a href="#cb10-158" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(<span class="sc">!</span>sample <span class="sc">%in%</span> low_sample_number)</span>
-<span id="cb10-159"><a href="#cb10-159" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-160"><a href="#cb10-160" aria-hidden="true" tabindex="-1"></a>basic_stats_raw <span class="ot">&lt;-</span> basic_stats <span class="sc">%&gt;%</span> <span class="fu">filter</span>(stage <span class="sc">==</span> <span class="st">"raw_concat"</span>)</span>
-<span id="cb10-161"><a href="#cb10-161" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-162"><a href="#cb10-162" aria-hidden="true" tabindex="-1"></a>raw_read_counts <span class="ot">&lt;-</span> basic_stats_raw <span class="sc">%&gt;%</span> </span>
-<span id="cb10-163"><a href="#cb10-163" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(dataset) <span class="sc">%&gt;%</span></span>
-<span id="cb10-164"><a href="#cb10-164" aria-hidden="true" tabindex="-1"></a>   <span class="fu">summarize</span>(<span class="at">rmin =</span> <span class="fu">min</span>(n_read_pairs), <span class="at">rmax=</span><span class="fu">max</span>(n_read_pairs),</span>
-<span id="cb10-165"><a href="#cb10-165" aria-hidden="true" tabindex="-1"></a>             <span class="at">rmean=</span><span class="fu">mean</span>(n_read_pairs), </span>
-<span id="cb10-166"><a href="#cb10-166" aria-hidden="true" tabindex="-1"></a>             <span class="at">rtot =</span> <span class="fu">sum</span>(n_read_pairs),</span>
-<span id="cb10-167"><a href="#cb10-167" aria-hidden="true" tabindex="-1"></a>             <span class="at">btot =</span> <span class="fu">sum</span>(n_bases_approx),</span>
-<span id="cb10-168"><a href="#cb10-168" aria-hidden="true" tabindex="-1"></a>             <span class="at">dmin =</span> <span class="fu">min</span>(percent_duplicates), <span class="at">dmax=</span><span class="fu">max</span>(percent_duplicates),</span>
-<span id="cb10-169"><a href="#cb10-169" aria-hidden="true" tabindex="-1"></a>             <span class="at">dmean=</span><span class="fu">mean</span>(percent_duplicates), <span class="at">.groups =</span> <span class="st">"drop"</span>)</span>
-<span id="cb10-170"><a href="#cb10-170" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb10-171"><a href="#cb10-171" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-174"><a href="#cb10-174" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
-<span id="cb10-175"><a href="#cb10-175" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: prepare-plotting-template</span></span>
-<span id="cb10-176"><a href="#cb10-176" aria-hidden="true" tabindex="-1"></a><span class="co">#| include: false</span></span>
-<span id="cb10-177"><a href="#cb10-177" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-178"><a href="#cb10-178" aria-hidden="true" tabindex="-1"></a>classifications <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">"Unassigned"</span>,<span class="st">"Bacterial"</span>, <span class="st">"Archaeal"</span>, <span class="st">"Viral"</span>, <span class="st">"Human"</span>)</span>
-<span id="cb10-179"><a href="#cb10-179" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-180"><a href="#cb10-180" aria-hidden="true" tabindex="-1"></a><span class="co"># Prepare plotting templates</span></span>
-<span id="cb10-181"><a href="#cb10-181" aria-hidden="true" tabindex="-1"></a>g_comp_base <span class="ot">&lt;-</span> <span class="fu">ggplot</span>(<span class="at">mapping=</span><span class="fu">aes</span>(<span class="at">x=</span>sample_type, <span class="at">y=</span>p_reads, <span class="at">fill=</span>classification)) <span class="sc">+</span></span>
-<span id="cb10-182"><a href="#cb10-182" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_x_discrete</span>(<span class="at">name=</span><span class="st">"Study"</span>) <span class="sc">+</span></span>
-<span id="cb10-183"><a href="#cb10-183" aria-hidden="true" tabindex="-1"></a>  theme_kit <span class="sc">+</span> </span>
-<span id="cb10-184"><a href="#cb10-184" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme</span>(<span class="at">plot.title =</span> <span class="fu">element_text</span>(<span class="at">hjust=</span><span class="dv">0</span>, <span class="at">face=</span><span class="st">"plain"</span>, <span class="at">size=</span><span class="fu">rel</span>(<span class="fl">1.5</span>)))</span>
-<span id="cb10-185"><a href="#cb10-185" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-186"><a href="#cb10-186" aria-hidden="true" tabindex="-1"></a>g_comp_base_study <span class="ot">&lt;-</span> <span class="fu">ggplot</span>(<span class="at">mapping=</span><span class="fu">aes</span>(<span class="at">x=</span>dataset, <span class="at">y=</span>p_reads, <span class="at">fill=</span>classification)) <span class="sc">+</span></span>
-<span id="cb10-187"><a href="#cb10-187" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_x_discrete</span>(<span class="at">name=</span><span class="st">"Study"</span>) <span class="sc">+</span></span>
-<span id="cb10-188"><a href="#cb10-188" aria-hidden="true" tabindex="-1"></a>  theme_kit <span class="sc">+</span> </span>
-<span id="cb10-189"><a href="#cb10-189" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme</span>(<span class="at">plot.title =</span> <span class="fu">element_text</span>(<span class="at">hjust=</span><span class="dv">0</span>, <span class="at">face=</span><span class="st">"plain"</span>, <span class="at">size=</span><span class="fu">rel</span>(<span class="fl">1.5</span>))) <span class="sc">+</span></span>
-<span id="cb10-190"><a href="#cb10-190" aria-hidden="true" tabindex="-1"></a>  <span class="fu">facet_grid</span>(sample_type <span class="sc">~</span> ., <span class="at">scales =</span> <span class="st">"free_y"</span>)</span>
-<span id="cb10-191"><a href="#cb10-191" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-192"><a href="#cb10-192" aria-hidden="true" tabindex="-1"></a>scale_y_pc_reads <span class="ot">&lt;-</span> purrr<span class="sc">::</span><span class="fu">partial</span>(scale_y_continuous, <span class="at">name =</span> <span class="st">"% Reads"</span>,</span>
-<span id="cb10-193"><a href="#cb10-193" aria-hidden="true" tabindex="-1"></a>                                   <span class="at">expand =</span> <span class="fu">c</span>(<span class="dv">0</span>,<span class="dv">0</span>), <span class="at">labels =</span> <span class="cf">function</span>(y) y<span class="sc">*</span><span class="dv">100</span>)</span>
-<span id="cb10-194"><a href="#cb10-194" aria-hidden="true" tabindex="-1"></a>geom_comp <span class="ot">&lt;-</span> purrr<span class="sc">::</span><span class="fu">partial</span>(geom_col, <span class="at">position =</span> <span class="st">"stack"</span>, <span class="at">width =</span> <span class="dv">1</span>)</span>
-<span id="cb10-195"><a href="#cb10-195" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-196"><a href="#cb10-196" aria-hidden="true" tabindex="-1"></a><span class="co"># Define a color palette for the classification</span></span>
-<span id="cb10-197"><a href="#cb10-197" aria-hidden="true" tabindex="-1"></a>classification_colors <span class="ot">&lt;-</span> <span class="fu">brewer.pal</span>(<span class="dv">8</span>, <span class="st">"Accent"</span>)</span>
-<span id="cb10-198"><a href="#cb10-198" aria-hidden="true" tabindex="-1"></a><span class="fu">names</span>(classification_colors) <span class="ot">&lt;-</span> classifications</span>
-<span id="cb10-199"><a href="#cb10-199" aria-hidden="true" tabindex="-1"></a>scale_fill_classification <span class="ot">&lt;-</span> <span class="cf">function</span>() {</span>
-<span id="cb10-200"><a href="#cb10-200" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_fill_manual</span>(<span class="at">values =</span> classification_colors, <span class="at">name =</span> <span class="st">"Classification"</span>)</span>
-<span id="cb10-201"><a href="#cb10-201" aria-hidden="true" tabindex="-1"></a>}</span>
-<span id="cb10-202"><a href="#cb10-202" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb10-203"><a href="#cb10-203" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-204"><a href="#cb10-204" aria-hidden="true" tabindex="-1"></a><span class="fu">## Kingdom composition</span></span>
-<span id="cb10-207"><a href="#cb10-207" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
-<span id="cb10-208"><a href="#cb10-208" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: kingdom-fraction</span></span>
-<span id="cb10-209"><a href="#cb10-209" aria-hidden="true" tabindex="-1"></a><span class="co">#| warning: false</span></span>
-<span id="cb10-210"><a href="#cb10-210" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig-width: 15</span></span>
-<span id="cb10-211"><a href="#cb10-211" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig-height: 5</span></span>
-<span id="cb10-212"><a href="#cb10-212" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig-cap: "**Figure 1**: Read composition"</span></span>
-<span id="cb10-213"><a href="#cb10-213" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-214"><a href="#cb10-214" aria-hidden="true" tabindex="-1"></a><span class="co"># Import composition data</span></span>
-<span id="cb10-215"><a href="#cb10-215" aria-hidden="true" tabindex="-1"></a>tax_final_dirs <span class="ot">&lt;-</span> <span class="fu">file.path</span>(results_dirs, <span class="st">"taxonomy_final"</span>)</span>
-<span id="cb10-216"><a href="#cb10-216" aria-hidden="true" tabindex="-1"></a>comp_paths <span class="ot">&lt;-</span> <span class="fu">file.path</span>(tax_final_dirs, <span class="st">"taxonomic_composition.tsv.gz"</span>)</span>
-<span id="cb10-217"><a href="#cb10-217" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-218"><a href="#cb10-218" aria-hidden="true" tabindex="-1"></a>comp <span class="ot">&lt;-</span> <span class="fu">lapply</span>(comp_paths, read_tsv, <span class="at">show_col_types =</span> <span class="cn">FALSE</span>) <span class="sc">%&gt;%</span> <span class="fu">bind_rows</span>() <span class="sc">%&gt;%</span></span>
-<span id="cb10-219"><a href="#cb10-219" aria-hidden="true" tabindex="-1"></a>  <span class="fu">inner_join</span>(libraries, <span class="at">by=</span><span class="st">'sample'</span>)</span>
-<span id="cb10-220"><a href="#cb10-220" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-221"><a href="#cb10-221" aria-hidden="true" tabindex="-1"></a>sample_type_comp <span class="ot">&lt;-</span> comp <span class="sc">%&gt;%</span></span>
-<span id="cb10-222"><a href="#cb10-222" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(classification <span class="sc">%in%</span> classifications) <span class="sc">%&gt;%</span></span>
-<span id="cb10-223"><a href="#cb10-223" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(sample_type, classification) <span class="sc">%&gt;%</span></span>
-<span id="cb10-224"><a href="#cb10-224" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarize</span>(<span class="at">n_reads =</span> <span class="fu">sum</span>(n_reads), <span class="at">.groups =</span> <span class="st">"drop_last"</span>) <span class="sc">%&gt;%</span></span>
-<span id="cb10-225"><a href="#cb10-225" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ungroup</span>() <span class="sc">%&gt;%</span></span>
-<span id="cb10-226"><a href="#cb10-226" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(sample_type) <span class="sc">%&gt;%</span></span>
-<span id="cb10-227"><a href="#cb10-227" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">total_reads =</span> <span class="fu">sum</span>(n_reads)) <span class="sc">%&gt;%</span></span>
-<span id="cb10-228"><a href="#cb10-228" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ungroup</span>() <span class="sc">%&gt;%</span></span>
-<span id="cb10-229"><a href="#cb10-229" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(sample_type, classification) <span class="sc">%&gt;%</span></span>
-<span id="cb10-230"><a href="#cb10-230" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">p_reads =</span> n_reads <span class="sc">/</span> total_reads) <span class="sc">%&gt;%</span></span>
-<span id="cb10-231"><a href="#cb10-231" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(sample_type, classification, p_reads) <span class="sc">%&gt;%</span></span>
-<span id="cb10-232"><a href="#cb10-232" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ungroup</span>()</span>
-<span id="cb10-233"><a href="#cb10-233" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-234"><a href="#cb10-234" aria-hidden="true" tabindex="-1"></a><span class="co"># Plot overall composition</span></span>
-<span id="cb10-235"><a href="#cb10-235" aria-hidden="true" tabindex="-1"></a>g_comp <span class="ot">&lt;-</span> g_comp_base <span class="sc">+</span> <span class="fu">geom_comp</span>(<span class="at">data =</span> sample_type_comp) <span class="sc">+</span></span>
-<span id="cb10-236"><a href="#cb10-236" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_y_pc_reads</span>(<span class="at">limits =</span> <span class="fu">c</span>(<span class="dv">0</span>,<span class="fl">1.01</span>), <span class="at">breaks =</span> <span class="fu">seq</span>(<span class="dv">0</span>,<span class="dv">1</span>,<span class="fl">0.2</span>)) <span class="sc">+</span></span>
-<span id="cb10-237"><a href="#cb10-237" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_fill_classification</span>() <span class="sc">+</span> </span>
-<span id="cb10-238"><a href="#cb10-238" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggtitle</span>(<span class="st">"Read composition (all reads, all groups)"</span>) <span class="sc">+</span></span>
-<span id="cb10-239"><a href="#cb10-239" aria-hidden="true" tabindex="-1"></a>  <span class="fu">coord_flip</span>()</span>
-<span id="cb10-240"><a href="#cb10-240" aria-hidden="true" tabindex="-1"></a>g_comp</span>
-<span id="cb10-241"><a href="#cb10-241" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-242"><a href="#cb10-242" aria-hidden="true" tabindex="-1"></a>sample_type_comp_summ <span class="ot">&lt;-</span> sample_type_comp <span class="sc">%&gt;%</span> </span>
-<span id="cb10-243"><a href="#cb10-243" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">p_reads =</span> <span class="fu">sprintf</span>(<span class="st">"%0.6f %%"</span>, p_reads<span class="sc">*</span><span class="dv">100</span>)) <span class="sc">%&gt;%</span></span>
-<span id="cb10-244"><a href="#cb10-244" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pivot_wider</span>(<span class="at">names_from =</span> classification, <span class="at">values_from =</span> p_reads)</span>
-<span id="cb10-245"><a href="#cb10-245" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-246"><a href="#cb10-246" aria-hidden="true" tabindex="-1"></a>sample_type_comp_summ <span class="sc">%&gt;%</span> <span class="fu">kable</span>()</span>
-<span id="cb10-247"><a href="#cb10-247" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-248"><a href="#cb10-248" aria-hidden="true" tabindex="-1"></a><span class="co"># Subset to only include the datasets that have viral enrichment</span></span>
-<span id="cb10-249"><a href="#cb10-249" aria-hidden="true" tabindex="-1"></a>subset_sample_type_comp <span class="ot">&lt;-</span> comp <span class="sc">%&gt;%</span></span>
-<span id="cb10-250"><a href="#cb10-250" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(dataset <span class="sc">%in%</span> <span class="fu">c</span>(<span class="st">"cebriamendoza2021"</span>, <span class="st">"thompson2023"</span>,<span class="st">"oconnell2023"</span>, <span class="st">"aydillo2022"</span>)) <span class="sc">%&gt;%</span></span>
-<span id="cb10-251"><a href="#cb10-251" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(classification <span class="sc">%in%</span> classifications) <span class="sc">%&gt;%</span></span>
-<span id="cb10-252"><a href="#cb10-252" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(sample_type, classification) <span class="sc">%&gt;%</span></span>
-<span id="cb10-253"><a href="#cb10-253" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarize</span>(<span class="at">n_reads =</span> <span class="fu">sum</span>(n_reads), <span class="at">.groups =</span> <span class="st">"drop_last"</span>) <span class="sc">%&gt;%</span></span>
-<span id="cb10-254"><a href="#cb10-254" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ungroup</span>() <span class="sc">%&gt;%</span></span>
-<span id="cb10-255"><a href="#cb10-255" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(sample_type) <span class="sc">%&gt;%</span></span>
-<span id="cb10-256"><a href="#cb10-256" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">total_reads =</span> <span class="fu">sum</span>(n_reads)) <span class="sc">%&gt;%</span></span>
-<span id="cb10-257"><a href="#cb10-257" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ungroup</span>() <span class="sc">%&gt;%</span></span>
-<span id="cb10-258"><a href="#cb10-258" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(sample_type, classification) <span class="sc">%&gt;%</span></span>
-<span id="cb10-259"><a href="#cb10-259" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">p_reads =</span> n_reads <span class="sc">/</span> total_reads) <span class="sc">%&gt;%</span></span>
-<span id="cb10-260"><a href="#cb10-260" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(sample_type, classification, p_reads) <span class="sc">%&gt;%</span></span>
-<span id="cb10-261"><a href="#cb10-261" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ungroup</span>()</span>
-<span id="cb10-262"><a href="#cb10-262" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-263"><a href="#cb10-263" aria-hidden="true" tabindex="-1"></a>subset_sample_type_comp_summ <span class="ot">&lt;-</span> subset_sample_type_comp <span class="sc">%&gt;%</span> </span>
-<span id="cb10-264"><a href="#cb10-264" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">p_reads =</span> <span class="fu">sprintf</span>(<span class="st">"%0.6f %%"</span>, p_reads<span class="sc">*</span><span class="dv">100</span>)) <span class="sc">%&gt;%</span></span>
-<span id="cb10-265"><a href="#cb10-265" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pivot_wider</span>(<span class="at">names_from =</span> classification, <span class="at">values_from =</span> p_reads) <span class="sc">%&gt;%</span></span>
-<span id="cb10-266"><a href="#cb10-266" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">sample_type =</span> <span class="fu">ifelse</span>(sample_type <span class="sc">==</span> <span class="st">"plasma"</span>, <span class="st">"plasma (viral enrichment)"</span>, <span class="st">"whole-blood"</span>))</span>
-<span id="cb10-267"><a href="#cb10-267" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-268"><a href="#cb10-268" aria-hidden="true" tabindex="-1"></a>subset_sample_type_comp_summ <span class="sc">%&gt;%</span> <span class="fu">kable</span>()</span>
-<span id="cb10-269"><a href="#cb10-269" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb10-270"><a href="#cb10-270" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-271"><a href="#cb10-271" aria-hidden="true" tabindex="-1"></a>Comparing the average kingdom fraction between sample types reveals that whole blood samples have higher human fractions than plasma, whereas plasma has higher unassigned, archaeal, bacterial, and viral fractions. However, if we instead only look at the plasma dataset that did viral enrichment, we see a stark difference in composition. Specifically, the plasma samples only have around 2% human reads, with around 6% viral reads.</span>
-<span id="cb10-272"><a href="#cb10-272" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-275"><a href="#cb10-275" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
-<span id="cb10-276"><a href="#cb10-276" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: kingdom-fraction-human-reads</span></span>
-<span id="cb10-277"><a href="#cb10-277" aria-hidden="true" tabindex="-1"></a><span class="co">#| include: false</span></span>
-<span id="cb10-278"><a href="#cb10-278" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-279"><a href="#cb10-279" aria-hidden="true" tabindex="-1"></a>non_human_classifications <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">"Unassigned"</span>,<span class="st">"Bacterial"</span>, <span class="st">"Archaeal"</span>, <span class="st">"Viral"</span>)</span>
-<span id="cb10-280"><a href="#cb10-280" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-281"><a href="#cb10-281" aria-hidden="true" tabindex="-1"></a>nonhuman_sample_type_comp <span class="ot">&lt;-</span> comp <span class="sc">%&gt;%</span></span>
-<span id="cb10-282"><a href="#cb10-282" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(classification <span class="sc">%in%</span> non_human_classifications) <span class="sc">%&gt;%</span></span>
-<span id="cb10-283"><a href="#cb10-283" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(sample_type, classification) <span class="sc">%&gt;%</span></span>
-<span id="cb10-284"><a href="#cb10-284" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarize</span>(<span class="at">n_reads =</span> <span class="fu">sum</span>(n_reads), <span class="at">.groups =</span> <span class="st">"drop_last"</span>) <span class="sc">%&gt;%</span></span>
-<span id="cb10-285"><a href="#cb10-285" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ungroup</span>() <span class="sc">%&gt;%</span></span>
-<span id="cb10-286"><a href="#cb10-286" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(sample_type) <span class="sc">%&gt;%</span></span>
-<span id="cb10-287"><a href="#cb10-287" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">total_reads =</span> <span class="fu">sum</span>(n_reads)) <span class="sc">%&gt;%</span></span>
-<span id="cb10-288"><a href="#cb10-288" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ungroup</span>() <span class="sc">%&gt;%</span></span>
-<span id="cb10-289"><a href="#cb10-289" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(sample_type, classification) <span class="sc">%&gt;%</span></span>
-<span id="cb10-290"><a href="#cb10-290" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">p_reads =</span> n_reads <span class="sc">/</span> total_reads) <span class="sc">%&gt;%</span></span>
-<span id="cb10-291"><a href="#cb10-291" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(sample_type, classification, p_reads) <span class="sc">%&gt;%</span></span>
-<span id="cb10-292"><a href="#cb10-292" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ungroup</span>() </span>
-<span id="cb10-293"><a href="#cb10-293" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-294"><a href="#cb10-294" aria-hidden="true" tabindex="-1"></a><span class="co"># Plot overall composition</span></span>
-<span id="cb10-295"><a href="#cb10-295" aria-hidden="true" tabindex="-1"></a><span class="co">#g_comp &lt;- g_comp_base + geom_comp(data = nonhuman_dataset_comp) +</span></span>
-<span id="cb10-296"><a href="#cb10-296" aria-hidden="true" tabindex="-1"></a><span class="co">#  scale_y_pc_reads(limits = c(0,1.01), breaks = seq(0,1,0.2)) +</span></span>
-<span id="cb10-297"><a href="#cb10-297" aria-hidden="true" tabindex="-1"></a><span class="co">#  scale_fill_classification() + </span></span>
-<span id="cb10-298"><a href="#cb10-298" aria-hidden="true" tabindex="-1"></a><span class="co">#  ggtitle("Read composition (all reads, all groups)") +</span></span>
-<span id="cb10-299"><a href="#cb10-299" aria-hidden="true" tabindex="-1"></a><span class="co">#  coord_flip()</span></span>
-<span id="cb10-300"><a href="#cb10-300" aria-hidden="true" tabindex="-1"></a><span class="co">#g_comp</span></span>
-<span id="cb10-301"><a href="#cb10-301" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-302"><a href="#cb10-302" aria-hidden="true" tabindex="-1"></a>nonhuman_sample_type_comp_summ <span class="ot">&lt;-</span> nonhuman_sample_type_comp <span class="sc">%&gt;%</span> </span>
-<span id="cb10-303"><a href="#cb10-303" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">p_reads =</span> <span class="fu">sprintf</span>(<span class="st">"%0.6f %%"</span>, p_reads<span class="sc">*</span><span class="dv">100</span>)) <span class="sc">%&gt;%</span></span>
-<span id="cb10-304"><a href="#cb10-304" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pivot_wider</span>(<span class="at">names_from =</span> classification, <span class="at">values_from =</span> p_reads)</span>
-<span id="cb10-305"><a href="#cb10-305" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-306"><a href="#cb10-306" aria-hidden="true" tabindex="-1"></a>nonhuman_sample_type_comp_summ <span class="sc">%&gt;%</span> <span class="fu">kable</span>()</span>
-<span id="cb10-307"><a href="#cb10-307" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb10-308"><a href="#cb10-308" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-309"><a href="#cb10-309" aria-hidden="true" tabindex="-1"></a>Another way we can look at this is by controlling for human reads across all datasets. When we do this over all whole blood and plasma datasets, we can see that they have similar read composition across the board. However, plasma has a higher viral read fraction by a magnitude of 10.</span>
-<span id="cb10-310"><a href="#cb10-310" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-311"><a href="#cb10-311" aria-hidden="true" tabindex="-1"></a><span class="fu">## Human-infecting viruses</span></span>
-<span id="cb10-312"><a href="#cb10-312" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-313"><a href="#cb10-313" aria-hidden="true" tabindex="-1"></a><span class="fu">### Overview</span></span>
-<span id="cb10-316"><a href="#cb10-316" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
-<span id="cb10-317"><a href="#cb10-317" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: extract-viral-taxa</span></span>
-<span id="cb10-318"><a href="#cb10-318" aria-hidden="true" tabindex="-1"></a><span class="co">#| include: false</span></span>
-<span id="cb10-319"><a href="#cb10-319" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-320"><a href="#cb10-320" aria-hidden="true" tabindex="-1"></a>grouping_cols <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">"dataset"</span>, <span class="st">"sample"</span>, <span class="st">"sample_type"</span>) </span>
-<span id="cb10-321"><a href="#cb10-321" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-322"><a href="#cb10-322" aria-hidden="true" tabindex="-1"></a><span class="co"># Get viral taxonomy</span></span>
-<span id="cb10-323"><a href="#cb10-323" aria-hidden="true" tabindex="-1"></a>viral_taxa <span class="ot">&lt;-</span> <span class="fu">read_tsv</span>(<span class="st">"/Users/harmonbhasin/work/securebio/nao-harmon/thompson2023/analysis/total-virus-db.tsv.gz"</span>, <span class="at">show_col_types =</span> <span class="cn">FALSE</span>)</span>
-<span id="cb10-324"><a href="#cb10-324" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-325"><a href="#cb10-325" aria-hidden="true" tabindex="-1"></a><span class="co"># Get Kraken reports</span></span>
-<span id="cb10-326"><a href="#cb10-326" aria-hidden="true" tabindex="-1"></a>reports_path <span class="ot">&lt;-</span> <span class="fu">file.path</span>(tax_final_dirs, <span class="st">"kraken_reports.tsv.gz"</span>)</span>
-<span id="cb10-327"><a href="#cb10-327" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-328"><a href="#cb10-328" aria-hidden="true" tabindex="-1"></a>reports <span class="ot">&lt;-</span> <span class="fu">lapply</span>(reports_path, read_tsv, <span class="at">show_col_types =</span> <span class="cn">FALSE</span>) <span class="sc">%&gt;%</span> <span class="fu">bind_rows</span>() <span class="sc">%&gt;%</span></span>
-<span id="cb10-329"><a href="#cb10-329" aria-hidden="true" tabindex="-1"></a>  <span class="fu">inner_join</span>(libraries, <span class="at">by=</span><span class="st">"sample"</span>) <span class="sc">%&gt;%</span> <span class="fu">arrange</span>(sample)</span>
-<span id="cb10-330"><a href="#cb10-330" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-331"><a href="#cb10-331" aria-hidden="true" tabindex="-1"></a><span class="co"># Filter to viral taxa</span></span>
-<span id="cb10-332"><a href="#cb10-332" aria-hidden="true" tabindex="-1"></a>kraken_reports_viral <span class="ot">&lt;-</span> <span class="fu">filter</span>(reports, taxid <span class="sc">%in%</span> viral_taxa<span class="sc">$</span>taxid) <span class="sc">%&gt;%</span></span>
-<span id="cb10-333"><a href="#cb10-333" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(sample, dataset) <span class="sc">%&gt;%</span></span>
-<span id="cb10-334"><a href="#cb10-334" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">p_reads_viral =</span> n_reads_clade<span class="sc">/</span>n_reads_clade[<span class="dv">1</span>])</span>
-<span id="cb10-335"><a href="#cb10-335" aria-hidden="true" tabindex="-1"></a>kraken_reports_viral_cleaned <span class="ot">&lt;-</span> kraken_reports_viral <span class="sc">%&gt;%</span></span>
-<span id="cb10-336"><a href="#cb10-336" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">select</span>(<span class="sc">-</span>pc_reads_total, <span class="sc">-</span>n_reads_direct, <span class="sc">-</span><span class="fu">contains</span>(<span class="st">"minimizers"</span>)) <span class="sc">%&gt;%</span></span>
-<span id="cb10-337"><a href="#cb10-337" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">select</span>(name, taxid, p_reads_viral, n_reads_clade, <span class="fu">everything</span>()) <span class="sc">%&gt;%</span> ungroup</span>
-<span id="cb10-338"><a href="#cb10-338" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-339"><a href="#cb10-339" aria-hidden="true" tabindex="-1"></a>viral_classes <span class="ot">&lt;-</span> kraken_reports_viral_cleaned <span class="sc">%&gt;%</span> <span class="fu">filter</span>(rank <span class="sc">==</span> <span class="st">"C"</span>)</span>
-<span id="cb10-340"><a href="#cb10-340" aria-hidden="true" tabindex="-1"></a>viral_families <span class="ot">&lt;-</span> kraken_reports_viral_cleaned <span class="sc">%&gt;%</span> <span class="fu">filter</span>(rank <span class="sc">==</span> <span class="st">"F"</span>)</span>
-<span id="cb10-341"><a href="#cb10-341" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb10-342"><a href="#cb10-342" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-345"><a href="#cb10-345" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
-<span id="cb10-346"><a href="#cb10-346" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: prepare-hv</span></span>
-<span id="cb10-347"><a href="#cb10-347" aria-hidden="true" tabindex="-1"></a><span class="co">#| include: false</span></span>
-<span id="cb10-348"><a href="#cb10-348" aria-hidden="true" tabindex="-1"></a><span class="co">#| cache-lazy: false</span></span>
-<span id="cb10-349"><a href="#cb10-349" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-350"><a href="#cb10-350" aria-hidden="true" tabindex="-1"></a>mrg_hv <span class="ot">&lt;-</span> <span class="fu">readRDS</span>(<span class="st">"/Users/harmonbhasin/work/securebio/blogs/blog_3/mrg_hv.RDS"</span>)</span>
-<span id="cb10-351"><a href="#cb10-351" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-352"><a href="#cb10-352" aria-hidden="true" tabindex="-1"></a>mrg_hv[[<span class="dv">1</span>]] <span class="ot">&lt;-</span> mrg_hv[[<span class="dv">1</span>]] <span class="sc">%&gt;%</span></span>
-<span id="cb10-353"><a href="#cb10-353" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">taxid =</span> <span class="fu">as.character</span>(taxid))</span>
-<span id="cb10-354"><a href="#cb10-354" aria-hidden="true" tabindex="-1"></a>mrg_hv[[<span class="dv">6</span>]] <span class="ot">&lt;-</span> mrg_hv[[<span class="dv">6</span>]] <span class="sc">%&gt;%</span></span>
-<span id="cb10-355"><a href="#cb10-355" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">taxid =</span> <span class="fu">as.character</span>(taxid))</span>
-<span id="cb10-356"><a href="#cb10-356" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-357"><a href="#cb10-357" aria-hidden="true" tabindex="-1"></a>mrg_hv <span class="ot">&lt;-</span> mrg_hv <span class="sc">%&gt;%</span></span>
-<span id="cb10-358"><a href="#cb10-358" aria-hidden="true" tabindex="-1"></a>  <span class="fu">bind_rows</span>() <span class="sc">%&gt;%</span></span>
-<span id="cb10-359"><a href="#cb10-359" aria-hidden="true" tabindex="-1"></a>  <span class="fu">inner_join</span>(libraries, <span class="at">by=</span><span class="st">"sample"</span>) <span class="sc">%&gt;%</span> <span class="fu">arrange</span>(sample) <span class="sc">%&gt;%</span></span>
-<span id="cb10-360"><a href="#cb10-360" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">kraken_label =</span> <span class="fu">ifelse</span>(assigned_hv, <span class="st">"Kraken2 HV assignment"</span>,</span>
-<span id="cb10-361"><a href="#cb10-361" aria-hidden="true" tabindex="-1"></a>                               <span class="st">"No Kraken2 assignment"</span>)) <span class="sc">%&gt;%</span></span>
-<span id="cb10-362"><a href="#cb10-362" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">adj_score_max =</span> <span class="fu">pmax</span>(adj_score_fwd, adj_score_rev),</span>
-<span id="cb10-363"><a href="#cb10-363" aria-hidden="true" tabindex="-1"></a>         <span class="at">highscore =</span> adj_score_max <span class="sc">&gt;=</span> <span class="dv">20</span>,</span>
-<span id="cb10-364"><a href="#cb10-364" aria-hidden="true" tabindex="-1"></a>         <span class="at">hv_status =</span> assigned_hv <span class="sc">|</span> highscore) <span class="sc">%&gt;%</span></span>
-<span id="cb10-365"><a href="#cb10-365" aria-hidden="true" tabindex="-1"></a>  <span class="fu">rename</span>(<span class="at">taxid_all =</span> taxid, <span class="at">taxid =</span> taxid_best)</span>
-<span id="cb10-366"><a href="#cb10-366" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb10-367"><a href="#cb10-367" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-370"><a href="#cb10-370" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
-<span id="cb10-371"><a href="#cb10-371" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: count-hv-reads</span></span>
-<span id="cb10-372"><a href="#cb10-372" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig-width: 10</span></span>
-<span id="cb10-373"><a href="#cb10-373" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig-height: 5</span></span>
-<span id="cb10-374"><a href="#cb10-374" aria-hidden="true" tabindex="-1"></a><span class="co">#| warning: false</span></span>
-<span id="cb10-375"><a href="#cb10-375" aria-hidden="true" tabindex="-1"></a><span class="co">#| include: false</span></span>
-<span id="cb10-376"><a href="#cb10-376" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-377"><a href="#cb10-377" aria-hidden="true" tabindex="-1"></a>read_counts_raw <span class="ot">&lt;-</span> <span class="fu">filter</span>(basic_stats_raw) <span class="sc">%&gt;%</span></span>
-<span id="cb10-378"><a href="#cb10-378" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">select</span>(sample, <span class="at">n_reads_raw =</span> n_read_pairs)</span>
-<span id="cb10-379"><a href="#cb10-379" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-380"><a href="#cb10-380" aria-hidden="true" tabindex="-1"></a>read_counts_hv <span class="ot">&lt;-</span> mrg_hv <span class="sc">%&gt;%</span> <span class="fu">filter</span>(hv_status) <span class="sc">%&gt;%</span> </span>
-<span id="cb10-381"><a href="#cb10-381" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(sample) <span class="sc">%&gt;%</span> </span>
-<span id="cb10-382"><a href="#cb10-382" aria-hidden="true" tabindex="-1"></a>  <span class="fu">count</span>(<span class="at">name=</span><span class="st">"n_reads_hv"</span>)</span>
-<span id="cb10-383"><a href="#cb10-383" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-384"><a href="#cb10-384" aria-hidden="true" tabindex="-1"></a>read_counts <span class="ot">&lt;-</span> read_counts_raw <span class="sc">%&gt;%</span></span>
-<span id="cb10-385"><a href="#cb10-385" aria-hidden="true" tabindex="-1"></a>  <span class="fu">left_join</span>(read_counts_hv, <span class="at">by=</span><span class="fu">c</span>(<span class="st">"sample"</span>)) <span class="sc">%&gt;%</span></span>
-<span id="cb10-386"><a href="#cb10-386" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">n_reads_hv =</span> <span class="fu">replace_na</span>(n_reads_hv, <span class="dv">0</span>)) <span class="sc">%&gt;%</span></span>
-<span id="cb10-387"><a href="#cb10-387" aria-hidden="true" tabindex="-1"></a>  <span class="fu">inner_join</span>(libraries, <span class="at">by=</span><span class="fu">c</span>(<span class="st">"sample"</span>)) <span class="sc">%&gt;%</span></span>
-<span id="cb10-388"><a href="#cb10-388" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">p_reads =</span> n_reads_hv<span class="sc">/</span>n_reads_raw) <span class="sc">%&gt;%</span> </span>
-<span id="cb10-389"><a href="#cb10-389" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(<span class="sc">!</span>library)</span>
-<span id="cb10-390"><a href="#cb10-390" aria-hidden="true" tabindex="-1"></a><span class="co">#write_tsv(read_counts, "/Users/harmonbhasin/work/securebio/blogs/blog_3/n_hv_reads_per_sample.tsv")</span></span>
-<span id="cb10-391"><a href="#cb10-391" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-392"><a href="#cb10-392" aria-hidden="true" tabindex="-1"></a><span class="co"># Filters out 0s</span></span>
-<span id="cb10-393"><a href="#cb10-393" aria-hidden="true" tabindex="-1"></a>g_all_reads <span class="ot">&lt;-</span> <span class="fu">ggplot</span>(read_counts, <span class="fu">aes</span>(<span class="at">x=</span>sample_type, <span class="at">y=</span>p_reads)) <span class="sc">+</span></span>
-<span id="cb10-394"><a href="#cb10-394" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_boxplot</span>(<span class="at">width=</span><span class="fl">0.1</span>) <span class="sc">+</span></span>
-<span id="cb10-395"><a href="#cb10-395" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_y_log10</span>(<span class="at">labels =</span> <span class="fu">label_log</span>(<span class="at">digits =</span> <span class="dv">3</span>)) <span class="sc">+</span></span>
-<span id="cb10-396"><a href="#cb10-396" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title=</span><span class="st">"Proportion of all reads in each dataset"</span>) <span class="sc">+</span></span>
-<span id="cb10-397"><a href="#cb10-397" aria-hidden="true" tabindex="-1"></a>  theme_kit <span class="sc">+</span></span>
-<span id="cb10-398"><a href="#cb10-398" aria-hidden="true" tabindex="-1"></a>  <span class="fu">coord_flip</span>()</span>
-<span id="cb10-399"><a href="#cb10-399" aria-hidden="true" tabindex="-1"></a>g_all_reads</span>
-<span id="cb10-400"><a href="#cb10-400" aria-hidden="true" tabindex="-1"></a><span class="co">#ggsave("/Users/harmonbhasin/work/securebio/blogs/blog_3/hv_ra_datasets.png", g_all_reads, width = 15, height = 5)</span></span>
-<span id="cb10-401"><a href="#cb10-401" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb10-402"><a href="#cb10-402" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-405"><a href="#cb10-405" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
-<span id="cb10-406"><a href="#cb10-406" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: sample-type-ra-hv</span></span>
-<span id="cb10-407"><a href="#cb10-407" aria-hidden="true" tabindex="-1"></a><span class="co">#| include: false</span></span>
-<span id="cb10-408"><a href="#cb10-408" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-409"><a href="#cb10-409" aria-hidden="true" tabindex="-1"></a>read_counts <span class="sc">%&gt;%</span> </span>
-<span id="cb10-410"><a href="#cb10-410" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(sample_type) <span class="sc">%&gt;%</span> </span>
-<span id="cb10-411"><a href="#cb10-411" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarize</span>(<span class="at">mean_ra =</span> <span class="fu">mean</span>(p_reads)) <span class="sc">%&gt;%</span></span>
-<span id="cb10-412"><a href="#cb10-412" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">mean_ra =</span> <span class="fu">sprintf</span>(<span class="st">"%.2e"</span>, mean_ra)) <span class="sc">%&gt;%</span></span>
-<span id="cb10-413"><a href="#cb10-413" aria-hidden="true" tabindex="-1"></a>  <span class="fu">rename</span>(<span class="st">`</span><span class="at">RA</span><span class="st">`</span> <span class="ot">=</span> mean_ra) <span class="sc">%&gt;%</span></span>
-<span id="cb10-414"><a href="#cb10-414" aria-hidden="true" tabindex="-1"></a>  <span class="fu">kable</span>()</span>
-<span id="cb10-415"><a href="#cb10-415" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb10-416"><a href="#cb10-416" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-417"><a href="#cb10-417" aria-hidden="true" tabindex="-1"></a>When comparing the relative abundance of human-infecting viruses between sample types, we see that the plasma samples have a higher relative abundance of human-infecting viruses than the whole blood samples (samples with 0 reads are filtered out). Compare the mean relative abundance of human infecting viruses between plasma and whole blood and we see that plasma has a relative abundance 3 orders of magnitude higher.</span>
-<span id="cb10-418"><a href="#cb10-418" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-421"><a href="#cb10-421" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
-<span id="cb10-422"><a href="#cb10-422" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: hv-fraction-human-reads-removed</span></span>
-<span id="cb10-423"><a href="#cb10-423" aria-hidden="true" tabindex="-1"></a><span class="co">#| include: false</span></span>
-<span id="cb10-424"><a href="#cb10-424" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-425"><a href="#cb10-425" aria-hidden="true" tabindex="-1"></a>read_counts_human <span class="ot">&lt;-</span> comp <span class="sc">%&gt;%</span> </span>
-<span id="cb10-426"><a href="#cb10-426" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(classification <span class="sc">==</span> <span class="st">"Human"</span>) <span class="sc">%&gt;%</span> </span>
-<span id="cb10-427"><a href="#cb10-427" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(sample) <span class="sc">%&gt;%</span> </span>
-<span id="cb10-428"><a href="#cb10-428" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarize</span>(<span class="at">human_reads =</span> <span class="fu">sum</span>(n_reads))</span>
-<span id="cb10-429"><a href="#cb10-429" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-430"><a href="#cb10-430" aria-hidden="true" tabindex="-1"></a>read_counts_nonhuman <span class="ot">&lt;-</span> read_counts <span class="sc">%&gt;%</span></span>
-<span id="cb10-431"><a href="#cb10-431" aria-hidden="true" tabindex="-1"></a>  <span class="fu">inner_join</span>(read_counts_human, <span class="at">by=</span><span class="fu">c</span>(<span class="st">"sample"</span>)) <span class="sc">%&gt;%</span></span>
-<span id="cb10-432"><a href="#cb10-432" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">n_reads_not_human =</span> n_reads_raw <span class="sc">-</span> human_reads) <span class="sc">%&gt;%</span></span>
-<span id="cb10-433"><a href="#cb10-433" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">p_reads_not_human =</span> n_reads_hv<span class="sc">/</span>n_reads_not_human)</span>
-<span id="cb10-434"><a href="#cb10-434" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-435"><a href="#cb10-435" aria-hidden="true" tabindex="-1"></a>read_counts_nonhuman <span class="sc">%&gt;%</span> </span>
-<span id="cb10-436"><a href="#cb10-436" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(sample_type) <span class="sc">%&gt;%</span> </span>
-<span id="cb10-437"><a href="#cb10-437" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarize</span>(<span class="at">mean_ra =</span> <span class="fu">mean</span>(p_reads_not_human)) <span class="sc">%&gt;%</span></span>
-<span id="cb10-438"><a href="#cb10-438" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">mean_ra =</span> <span class="fu">sprintf</span>(<span class="st">"%.2e"</span>, mean_ra)) <span class="sc">%&gt;%</span></span>
-<span id="cb10-439"><a href="#cb10-439" aria-hidden="true" tabindex="-1"></a>  <span class="fu">rename</span>(<span class="st">`</span><span class="at">RA (control for human reads)</span><span class="st">`</span> <span class="ot">=</span> mean_ra) <span class="sc">%&gt;%</span></span>
-<span id="cb10-440"><a href="#cb10-440" aria-hidden="true" tabindex="-1"></a>  <span class="fu">kable</span>()</span>
-<span id="cb10-441"><a href="#cb10-441" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-442"><a href="#cb10-442" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb10-443"><a href="#cb10-443" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-444"><a href="#cb10-444" aria-hidden="true" tabindex="-1"></a>If we control for human reads, we see that the relationship remains the same.</span>
-<span id="cb10-445"><a href="#cb10-445" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-446"><a href="#cb10-446" aria-hidden="true" tabindex="-1"></a><span class="fu">### Family composition</span></span>
-<span id="cb10-447"><a href="#cb10-447" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-450"><a href="#cb10-450" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
-<span id="cb10-451"><a href="#cb10-451" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: explore-hv-family-sample-type</span></span>
-<span id="cb10-452"><a href="#cb10-452" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig-width: 15</span></span>
-<span id="cb10-453"><a href="#cb10-453" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig-height: 5 </span></span>
-<span id="cb10-454"><a href="#cb10-454" aria-hidden="true" tabindex="-1"></a><span class="co">#| cache-lazy: false </span></span>
-<span id="cb10-455"><a href="#cb10-455" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-456"><a href="#cb10-456" aria-hidden="true" tabindex="-1"></a>hv_reads_family <span class="ot">&lt;-</span> <span class="fu">readRDS</span>(<span class="st">"/Users/harmonbhasin/work/securebio/blogs/blog_3/hv_reads_family.RDS"</span>)</span>
-<span id="cb10-457"><a href="#cb10-457" aria-hidden="true" tabindex="-1"></a>threshold_major_family <span class="ot">&lt;-</span> <span class="fl">0.01</span></span>
-<span id="cb10-458"><a href="#cb10-458" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-459"><a href="#cb10-459" aria-hidden="true" tabindex="-1"></a><span class="co"># Count reads for each human-viral family</span></span>
-<span id="cb10-460"><a href="#cb10-460" aria-hidden="true" tabindex="-1"></a>hv_family_counts <span class="ot">&lt;-</span> hv_reads_family <span class="sc">%&gt;%</span> </span>
-<span id="cb10-461"><a href="#cb10-461" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(name, taxid, sample_type) <span class="sc">%&gt;%</span></span>
-<span id="cb10-462"><a href="#cb10-462" aria-hidden="true" tabindex="-1"></a>  <span class="fu">count</span>(<span class="at">name =</span> <span class="st">"n_reads_hv"</span>) <span class="sc">%&gt;%</span></span>
-<span id="cb10-463"><a href="#cb10-463" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(sample_type) <span class="sc">%&gt;%</span></span>
-<span id="cb10-464"><a href="#cb10-464" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">p_reads_hv =</span> n_reads_hv<span class="sc">/</span><span class="fu">sum</span>(n_reads_hv))</span>
-<span id="cb10-465"><a href="#cb10-465" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-466"><a href="#cb10-466" aria-hidden="true" tabindex="-1"></a><span class="co"># Identify high-ranking families and group others</span></span>
-<span id="cb10-467"><a href="#cb10-467" aria-hidden="true" tabindex="-1"></a>hv_family_major_tab <span class="ot">&lt;-</span> hv_family_counts <span class="sc">%&gt;%</span> <span class="fu">group_by</span>(name) <span class="sc">%&gt;%</span> </span>
-<span id="cb10-468"><a href="#cb10-468" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(p_reads_hv <span class="sc">==</span> <span class="fu">max</span>(p_reads_hv)) <span class="sc">%&gt;%</span> <span class="fu">filter</span>(<span class="fu">row_number</span>() <span class="sc">==</span> <span class="dv">1</span>) <span class="sc">%&gt;%</span></span>
-<span id="cb10-469"><a href="#cb10-469" aria-hidden="true" tabindex="-1"></a>  <span class="fu">arrange</span>(<span class="fu">desc</span>(p_reads_hv)) <span class="sc">%&gt;%</span> <span class="fu">filter</span>(p_reads_hv <span class="sc">&gt;</span> threshold_major_family)</span>
-<span id="cb10-470"><a href="#cb10-470" aria-hidden="true" tabindex="-1"></a>hv_family_counts_major <span class="ot">&lt;-</span> hv_family_counts <span class="sc">%&gt;%</span></span>
-<span id="cb10-471"><a href="#cb10-471" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">name_display =</span> <span class="fu">ifelse</span>(name <span class="sc">%in%</span> hv_family_major_tab<span class="sc">$</span>name, name, <span class="st">"Other"</span>)) <span class="sc">%&gt;%</span></span>
-<span id="cb10-472"><a href="#cb10-472" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(sample_type, name_display) <span class="sc">%&gt;%</span></span>
-<span id="cb10-473"><a href="#cb10-473" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarize</span>(<span class="at">n_reads_hv =</span> <span class="fu">sum</span>(n_reads_hv), <span class="at">p_reads_hv =</span> <span class="fu">sum</span>(p_reads_hv), </span>
-<span id="cb10-474"><a href="#cb10-474" aria-hidden="true" tabindex="-1"></a>            <span class="at">.groups=</span><span class="st">"drop"</span>) <span class="sc">%&gt;%</span></span>
-<span id="cb10-475"><a href="#cb10-475" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">name_display =</span> <span class="fu">factor</span>(name_display, </span>
-<span id="cb10-476"><a href="#cb10-476" aria-hidden="true" tabindex="-1"></a>                               <span class="at">levels =</span> <span class="fu">c</span>(hv_family_major_tab<span class="sc">$</span>name, <span class="st">"Other"</span>)))</span>
-<span id="cb10-477"><a href="#cb10-477" aria-hidden="true" tabindex="-1"></a>hv_family_counts_display <span class="ot">&lt;-</span> hv_family_counts_major <span class="sc">%&gt;%</span></span>
-<span id="cb10-478"><a href="#cb10-478" aria-hidden="true" tabindex="-1"></a>  <span class="fu">rename</span>(<span class="at">p_reads =</span> p_reads_hv, <span class="at">classification =</span> name_display)</span>
-<span id="cb10-479"><a href="#cb10-479" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-480"><a href="#cb10-480" aria-hidden="true" tabindex="-1"></a><span class="co"># Create a custom color palette with up to 20 colors</span></span>
-<span id="cb10-481"><a href="#cb10-481" aria-hidden="true" tabindex="-1"></a>custom_palette <span class="ot">&lt;-</span> <span class="fu">c</span>(</span>
-<span id="cb10-482"><a href="#cb10-482" aria-hidden="true" tabindex="-1"></a>  <span class="fu">brewer.pal</span>(<span class="dv">12</span>, <span class="st">"Paired"</span>),</span>
-<span id="cb10-483"><a href="#cb10-483" aria-hidden="true" tabindex="-1"></a>  <span class="fu">brewer.pal</span>(<span class="dv">12</span>, <span class="st">"Set3"</span>)</span>
-<span id="cb10-484"><a href="#cb10-484" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb10-485"><a href="#cb10-485" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-486"><a href="#cb10-486" aria-hidden="true" tabindex="-1"></a>n_classifications <span class="ot">&lt;-</span> <span class="fu">length</span>(<span class="fu">unique</span>(hv_family_counts_display<span class="sc">$</span>classification)) <span class="sc">-</span> <span class="dv">1</span></span>
-<span id="cb10-487"><a href="#cb10-487" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-488"><a href="#cb10-488" aria-hidden="true" tabindex="-1"></a>custom_palette_with_black <span class="ot">&lt;-</span> <span class="fu">c</span>(</span>
-<span id="cb10-489"><a href="#cb10-489" aria-hidden="true" tabindex="-1"></a>  custom_palette[<span class="dv">1</span><span class="sc">:</span>n_classifications],</span>
-<span id="cb10-490"><a href="#cb10-490" aria-hidden="true" tabindex="-1"></a>  <span class="st">"black"</span></span>
-<span id="cb10-491"><a href="#cb10-491" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb10-492"><a href="#cb10-492" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-493"><a href="#cb10-493" aria-hidden="true" tabindex="-1"></a><span class="co"># Get most prominent families for text</span></span>
-<span id="cb10-494"><a href="#cb10-494" aria-hidden="true" tabindex="-1"></a>hv_family_collate <span class="ot">&lt;-</span> hv_family_counts <span class="sc">%&gt;%</span></span>
-<span id="cb10-495"><a href="#cb10-495" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(name, taxid, sample_type) <span class="sc">%&gt;%</span> </span>
-<span id="cb10-496"><a href="#cb10-496" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarize</span>(<span class="at">n_reads_tot =</span> <span class="fu">sum</span>(n_reads_hv),</span>
-<span id="cb10-497"><a href="#cb10-497" aria-hidden="true" tabindex="-1"></a>            <span class="at">p_reads_max =</span> <span class="fu">max</span>(p_reads_hv), <span class="at">.groups=</span><span class="st">"drop"</span>) <span class="sc">%&gt;%</span> </span>
-<span id="cb10-498"><a href="#cb10-498" aria-hidden="true" tabindex="-1"></a>  <span class="fu">arrange</span>(<span class="fu">desc</span>(n_reads_tot))</span>
-<span id="cb10-499"><a href="#cb10-499" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-500"><a href="#cb10-500" aria-hidden="true" tabindex="-1"></a>g_hv_family <span class="ot">&lt;-</span> g_comp_base <span class="sc">+</span> </span>
-<span id="cb10-501"><a href="#cb10-501" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_col</span>(<span class="at">data=</span>hv_family_counts_display, <span class="at">position =</span> <span class="st">"stack"</span>, <span class="at">width=</span><span class="dv">1</span>) <span class="sc">+</span></span>
-<span id="cb10-502"><a href="#cb10-502" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_y_continuous</span>(<span class="at">name=</span><span class="st">"% HV Reads"</span>, <span class="at">limits=</span><span class="fu">c</span>(<span class="dv">0</span>,<span class="fl">1.01</span>), </span>
-<span id="cb10-503"><a href="#cb10-503" aria-hidden="true" tabindex="-1"></a>                     <span class="at">breaks =</span> <span class="fu">seq</span>(<span class="dv">0</span>,<span class="dv">1</span>,<span class="fl">0.2</span>),</span>
-<span id="cb10-504"><a href="#cb10-504" aria-hidden="true" tabindex="-1"></a>                     <span class="at">expand=</span><span class="fu">c</span>(<span class="dv">0</span>,<span class="dv">0</span>), <span class="at">labels =</span> <span class="cf">function</span>(y) y<span class="sc">*</span><span class="dv">100</span>) <span class="sc">+</span></span>
-<span id="cb10-505"><a href="#cb10-505" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_fill_manual</span>(<span class="at">values =</span> custom_palette_with_black, <span class="at">name =</span> <span class="st">"Viral family"</span>) <span class="sc">+</span></span>
-<span id="cb10-506"><a href="#cb10-506" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title=</span><span class="st">"Family composition of human-viral reads"</span>) <span class="sc">+</span></span>
-<span id="cb10-507"><a href="#cb10-507" aria-hidden="true" tabindex="-1"></a>  <span class="fu">guides</span>(<span class="at">fill=</span><span class="fu">guide_legend</span>(<span class="at">ncol=</span><span class="dv">4</span>)) <span class="sc">+</span></span>
-<span id="cb10-508"><a href="#cb10-508" aria-hidden="true" tabindex="-1"></a><span class="co">#  facet_grid(~dataset + sample_type, scales="free_x") +</span></span>
-<span id="cb10-509"><a href="#cb10-509" aria-hidden="true" tabindex="-1"></a>  theme_kit <span class="sc">+</span> </span>
-<span id="cb10-510"><a href="#cb10-510" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme</span>(</span>
-<span id="cb10-511"><a href="#cb10-511" aria-hidden="true" tabindex="-1"></a>    <span class="at">plot.title =</span> <span class="fu">element_text</span>(<span class="at">size=</span><span class="fu">rel</span>(<span class="fl">1.4</span>), <span class="at">hjust=</span><span class="dv">0</span>, <span class="at">face=</span><span class="st">"plain"</span>)</span>
-<span id="cb10-512"><a href="#cb10-512" aria-hidden="true" tabindex="-1"></a>    ) <span class="sc">+</span> </span>
-<span id="cb10-513"><a href="#cb10-513" aria-hidden="true" tabindex="-1"></a>    <span class="fu">coord_flip</span>()</span>
-<span id="cb10-514"><a href="#cb10-514" aria-hidden="true" tabindex="-1"></a>g_hv_family</span>
-<span id="cb10-515"><a href="#cb10-515" aria-hidden="true" tabindex="-1"></a><span class="co">#ggsave("/Users/harmonbhasin/work/securebio/blogs/blog_3/hv_family_sample_type.png", g_hv_family, width = 15, height = 5)</span></span>
-<span id="cb10-516"><a href="#cb10-516" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb10-517"><a href="#cb10-517" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-518"><a href="#cb10-518" aria-hidden="true" tabindex="-1"></a>We can start off by looking at the family composition of human-infecting viruses in both sample types. We can see that Anelloviridae is the most abudant family in plasma, whereas Flavivirdae is the most abundant family in whole blood. To get a better understanding of this breakdown, we can look at the families in each study.</span>
-<span id="cb10-519"><a href="#cb10-519" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-522"><a href="#cb10-522" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
-<span id="cb10-523"><a href="#cb10-523" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: explore-hv-family-study</span></span>
-<span id="cb10-524"><a href="#cb10-524" aria-hidden="true" tabindex="-1"></a> </span>
-<span id="cb10-525"><a href="#cb10-525" aria-hidden="true" tabindex="-1"></a><span class="co"># Count reads for each human-viral family</span></span>
-<span id="cb10-526"><a href="#cb10-526" aria-hidden="true" tabindex="-1"></a>hv_family_counts <span class="ot">&lt;-</span> hv_reads_family <span class="sc">%&gt;%</span> </span>
-<span id="cb10-527"><a href="#cb10-527" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(name, taxid, dataset) <span class="sc">%&gt;%</span></span>
-<span id="cb10-528"><a href="#cb10-528" aria-hidden="true" tabindex="-1"></a>  <span class="fu">count</span>(<span class="at">name =</span> <span class="st">"n_reads_hv"</span>) <span class="sc">%&gt;%</span></span>
-<span id="cb10-529"><a href="#cb10-529" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(dataset) <span class="sc">%&gt;%</span></span>
-<span id="cb10-530"><a href="#cb10-530" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">p_reads_hv =</span> n_reads_hv<span class="sc">/</span><span class="fu">sum</span>(n_reads_hv))</span>
-<span id="cb10-531"><a href="#cb10-531" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-532"><a href="#cb10-532" aria-hidden="true" tabindex="-1"></a><span class="co"># Identify high-ranking families and group others</span></span>
-<span id="cb10-533"><a href="#cb10-533" aria-hidden="true" tabindex="-1"></a>hv_family_major_tab <span class="ot">&lt;-</span> hv_family_counts <span class="sc">%&gt;%</span> <span class="fu">group_by</span>(name) <span class="sc">%&gt;%</span> </span>
-<span id="cb10-534"><a href="#cb10-534" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(p_reads_hv <span class="sc">==</span> <span class="fu">max</span>(p_reads_hv)) <span class="sc">%&gt;%</span> <span class="fu">filter</span>(<span class="fu">row_number</span>() <span class="sc">==</span> <span class="dv">1</span>) <span class="sc">%&gt;%</span></span>
-<span id="cb10-535"><a href="#cb10-535" aria-hidden="true" tabindex="-1"></a>  <span class="fu">arrange</span>(<span class="fu">desc</span>(p_reads_hv)) <span class="sc">%&gt;%</span> <span class="fu">filter</span>(p_reads_hv <span class="sc">&gt;</span> threshold_major_family)</span>
-<span id="cb10-536"><a href="#cb10-536" aria-hidden="true" tabindex="-1"></a>hv_family_counts_major <span class="ot">&lt;-</span> hv_family_counts <span class="sc">%&gt;%</span></span>
-<span id="cb10-537"><a href="#cb10-537" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">name_display =</span> <span class="fu">ifelse</span>(name <span class="sc">%in%</span> hv_family_major_tab<span class="sc">$</span>name, name, <span class="st">"Other"</span>)) <span class="sc">%&gt;%</span></span>
-<span id="cb10-538"><a href="#cb10-538" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(dataset, name_display) <span class="sc">%&gt;%</span></span>
-<span id="cb10-539"><a href="#cb10-539" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarize</span>(<span class="at">n_reads_hv =</span> <span class="fu">sum</span>(n_reads_hv), <span class="at">p_reads_hv =</span> <span class="fu">sum</span>(p_reads_hv), </span>
-<span id="cb10-540"><a href="#cb10-540" aria-hidden="true" tabindex="-1"></a>            <span class="at">.groups=</span><span class="st">"drop"</span>) <span class="sc">%&gt;%</span></span>
-<span id="cb10-541"><a href="#cb10-541" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">name_display =</span> <span class="fu">factor</span>(name_display, </span>
-<span id="cb10-542"><a href="#cb10-542" aria-hidden="true" tabindex="-1"></a>                               <span class="at">levels =</span> <span class="fu">c</span>(hv_family_major_tab<span class="sc">$</span>name, <span class="st">"Other"</span>)))</span>
-<span id="cb10-543"><a href="#cb10-543" aria-hidden="true" tabindex="-1"></a>hv_family_counts_display <span class="ot">&lt;-</span> hv_family_counts_major <span class="sc">%&gt;%</span></span>
-<span id="cb10-544"><a href="#cb10-544" aria-hidden="true" tabindex="-1"></a>  <span class="fu">rename</span>(<span class="at">p_reads =</span> p_reads_hv, <span class="at">classification =</span> name_display) <span class="sc">%&gt;%</span></span>
-<span id="cb10-545"><a href="#cb10-545" aria-hidden="true" tabindex="-1"></a>  <span class="fu">left_join</span>(libraries[<span class="dv">3</span><span class="sc">:</span><span class="dv">4</span>] <span class="sc">%&gt;%</span> <span class="fu">unique</span>(), <span class="at">by=</span><span class="fu">c</span>(<span class="st">"dataset"</span>))</span>
-<span id="cb10-546"><a href="#cb10-546" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-547"><a href="#cb10-547" aria-hidden="true" tabindex="-1"></a><span class="co"># Create a custom color palette with up to 20 colors</span></span>
-<span id="cb10-548"><a href="#cb10-548" aria-hidden="true" tabindex="-1"></a>n_classifications <span class="ot">&lt;-</span> <span class="fu">length</span>(<span class="fu">unique</span>(hv_family_counts_display<span class="sc">$</span>classification)) <span class="sc">-</span> <span class="dv">1</span></span>
-<span id="cb10-549"><a href="#cb10-549" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-550"><a href="#cb10-550" aria-hidden="true" tabindex="-1"></a>custom_palette_with_black <span class="ot">&lt;-</span> <span class="fu">c</span>(</span>
-<span id="cb10-551"><a href="#cb10-551" aria-hidden="true" tabindex="-1"></a>  custom_palette[<span class="dv">1</span><span class="sc">:</span>n_classifications],</span>
-<span id="cb10-552"><a href="#cb10-552" aria-hidden="true" tabindex="-1"></a>  <span class="st">"black"</span></span>
-<span id="cb10-553"><a href="#cb10-553" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb10-554"><a href="#cb10-554" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-555"><a href="#cb10-555" aria-hidden="true" tabindex="-1"></a><span class="co"># Get most prominent families for text</span></span>
-<span id="cb10-556"><a href="#cb10-556" aria-hidden="true" tabindex="-1"></a>hv_family_collate <span class="ot">&lt;-</span> hv_family_counts <span class="sc">%&gt;%</span></span>
-<span id="cb10-557"><a href="#cb10-557" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(name, taxid, dataset) <span class="sc">%&gt;%</span> </span>
-<span id="cb10-558"><a href="#cb10-558" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarize</span>(<span class="at">n_reads_tot =</span> <span class="fu">sum</span>(n_reads_hv),</span>
-<span id="cb10-559"><a href="#cb10-559" aria-hidden="true" tabindex="-1"></a>            <span class="at">p_reads_max =</span> <span class="fu">max</span>(p_reads_hv), <span class="at">.groups=</span><span class="st">"drop"</span>) <span class="sc">%&gt;%</span> </span>
-<span id="cb10-560"><a href="#cb10-560" aria-hidden="true" tabindex="-1"></a>  <span class="fu">arrange</span>(<span class="fu">desc</span>(n_reads_tot))</span>
-<span id="cb10-561"><a href="#cb10-561" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-562"><a href="#cb10-562" aria-hidden="true" tabindex="-1"></a>g_hv_family <span class="ot">&lt;-</span> g_comp_base_study <span class="sc">+</span> </span>
-<span id="cb10-563"><a href="#cb10-563" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_col</span>(<span class="at">data=</span>hv_family_counts_display, <span class="at">position =</span> <span class="st">"stack"</span>, <span class="at">width=</span><span class="dv">1</span>) <span class="sc">+</span></span>
-<span id="cb10-564"><a href="#cb10-564" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_y_continuous</span>(<span class="at">name=</span><span class="st">"% HV Reads"</span>, <span class="at">limits=</span><span class="fu">c</span>(<span class="dv">0</span>,<span class="fl">1.01</span>), </span>
-<span id="cb10-565"><a href="#cb10-565" aria-hidden="true" tabindex="-1"></a>                     <span class="at">breaks =</span> <span class="fu">seq</span>(<span class="dv">0</span>,<span class="dv">1</span>,<span class="fl">0.2</span>),</span>
-<span id="cb10-566"><a href="#cb10-566" aria-hidden="true" tabindex="-1"></a>                     <span class="at">expand=</span><span class="fu">c</span>(<span class="dv">0</span>,<span class="dv">0</span>), <span class="at">labels =</span> <span class="cf">function</span>(y) y<span class="sc">*</span><span class="dv">100</span>) <span class="sc">+</span></span>
-<span id="cb10-567"><a href="#cb10-567" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_fill_manual</span>(<span class="at">values =</span> custom_palette_with_black, <span class="at">name =</span> <span class="st">"Viral family"</span>) <span class="sc">+</span></span>
-<span id="cb10-568"><a href="#cb10-568" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title=</span><span class="st">"Family composition of human-viral reads"</span>) <span class="sc">+</span></span>
-<span id="cb10-569"><a href="#cb10-569" aria-hidden="true" tabindex="-1"></a>  <span class="fu">guides</span>(<span class="at">fill=</span><span class="fu">guide_legend</span>(<span class="at">ncol=</span><span class="dv">4</span>)) <span class="sc">+</span></span>
-<span id="cb10-570"><a href="#cb10-570" aria-hidden="true" tabindex="-1"></a><span class="co">#  facet_grid(~dataset + sample_type, scales="free_x") +</span></span>
-<span id="cb10-571"><a href="#cb10-571" aria-hidden="true" tabindex="-1"></a>  theme_kit <span class="sc">+</span> </span>
-<span id="cb10-572"><a href="#cb10-572" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme</span>(</span>
-<span id="cb10-573"><a href="#cb10-573" aria-hidden="true" tabindex="-1"></a>    <span class="at">plot.title =</span> <span class="fu">element_text</span>(<span class="at">size=</span><span class="fu">rel</span>(<span class="fl">1.4</span>), <span class="at">hjust=</span><span class="dv">0</span>, <span class="at">face=</span><span class="st">"plain"</span>)</span>
-<span id="cb10-574"><a href="#cb10-574" aria-hidden="true" tabindex="-1"></a>    ) <span class="sc">+</span> </span>
-<span id="cb10-575"><a href="#cb10-575" aria-hidden="true" tabindex="-1"></a>    <span class="fu">coord_flip</span>()</span>
-<span id="cb10-576"><a href="#cb10-576" aria-hidden="true" tabindex="-1"></a>g_hv_family</span>
-<span id="cb10-577"><a href="#cb10-577" aria-hidden="true" tabindex="-1"></a><span class="co">#ggsave("/Users/harmonbhasin/work/securebio/blogs/blog_3/hv_family_study.png", g_hv_family, width = 15, height = 5)</span></span>
-<span id="cb10-578"><a href="#cb10-578" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb10-579"><a href="#cb10-579" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-580"><a href="#cb10-580" aria-hidden="true" tabindex="-1"></a>Comparing individual studies to each other, we see that there is a wide range of human-infecting virus depending on the study, even within the same sample type.</span>
-<span id="cb10-581"><a href="#cb10-581" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-582"><a href="#cb10-582" aria-hidden="true" tabindex="-1"></a><span class="fu">### Species composition</span></span>
-<span id="cb10-583"><a href="#cb10-583" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-586"><a href="#cb10-586" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
-<span id="cb10-587"><a href="#cb10-587" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: load-hv-species</span></span>
-<span id="cb10-588"><a href="#cb10-588" aria-hidden="true" tabindex="-1"></a><span class="co">#| include: false</span></span>
-<span id="cb10-589"><a href="#cb10-589" aria-hidden="true" tabindex="-1"></a><span class="co">#| cache-lazy: false</span></span>
-<span id="cb10-590"><a href="#cb10-590" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-591"><a href="#cb10-591" aria-hidden="true" tabindex="-1"></a>hv_reads_species <span class="ot">&lt;-</span> <span class="fu">readRDS</span>(<span class="st">"/Users/harmonbhasin/work/securebio/blogs/blog_3/hv_reads_species.RDS"</span>)</span>
-<span id="cb10-592"><a href="#cb10-592" aria-hidden="true" tabindex="-1"></a>viruses_of_interest <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">"Anelloviridae sp."</span>, </span>
-<span id="cb10-593"><a href="#cb10-593" aria-hidden="true" tabindex="-1"></a><span class="st">"Simplexvirus humanalpha1"</span>, </span>
-<span id="cb10-594"><a href="#cb10-594" aria-hidden="true" tabindex="-1"></a><span class="st">"Hepatitis B virus"</span>, </span>
-<span id="cb10-595"><a href="#cb10-595" aria-hidden="true" tabindex="-1"></a><span class="st">"Alphapapillomavirus 4"</span>, </span>
-<span id="cb10-596"><a href="#cb10-596" aria-hidden="true" tabindex="-1"></a><span class="st">"Human immunodeficiency virus 1"</span>,</span>
-<span id="cb10-597"><a href="#cb10-597" aria-hidden="true" tabindex="-1"></a><span class="st">"Roseolovirus humanbeta6a"</span>,</span>
-<span id="cb10-598"><a href="#cb10-598" aria-hidden="true" tabindex="-1"></a><span class="st">"Erythroparvovirus primate1"</span>,</span>
-<span id="cb10-599"><a href="#cb10-599" aria-hidden="true" tabindex="-1"></a><span class="st">"Lymphocryptovirus humangamma4"</span>,</span>
-<span id="cb10-600"><a href="#cb10-600" aria-hidden="true" tabindex="-1"></a><span class="st">"Cytomegalovirus humanbeta5"</span>, </span>
-<span id="cb10-601"><a href="#cb10-601" aria-hidden="true" tabindex="-1"></a><span class="st">"Human mastadenovirus C"</span>,</span>
-<span id="cb10-602"><a href="#cb10-602" aria-hidden="true" tabindex="-1"></a><span class="st">"Roseolovirus humanbeta7"</span>,</span>
-<span id="cb10-603"><a href="#cb10-603" aria-hidden="true" tabindex="-1"></a><span class="st">"Severe acute respiratory syndrome-related coronavirus"</span>,</span>
-<span id="cb10-604"><a href="#cb10-604" aria-hidden="true" tabindex="-1"></a><span class="st">"Roseolovirus humanbeta6b"</span>,</span>
-<span id="cb10-605"><a href="#cb10-605" aria-hidden="true" tabindex="-1"></a><span class="st">"Betapolyomavirus hominis"</span>,</span>
-<span id="cb10-606"><a href="#cb10-606" aria-hidden="true" tabindex="-1"></a><span class="st">"Human mastadenovirus F"</span>,</span>
-<span id="cb10-607"><a href="#cb10-607" aria-hidden="true" tabindex="-1"></a><span class="st">"Hepacivirus hominis"</span>,</span>
-<span id="cb10-608"><a href="#cb10-608" aria-hidden="true" tabindex="-1"></a><span class="st">"Pegivirus hominis"</span>,</span>
-<span id="cb10-609"><a href="#cb10-609" aria-hidden="true" tabindex="-1"></a><span class="st">"Paslahepevirus balayani"</span>,</span>
-<span id="cb10-610"><a href="#cb10-610" aria-hidden="true" tabindex="-1"></a><span class="st">"Alphapapillomavirus 2"</span>,</span>
-<span id="cb10-611"><a href="#cb10-611" aria-hidden="true" tabindex="-1"></a><span class="st">"Nupapillomavirus 1"</span>,</span>
-<span id="cb10-612"><a href="#cb10-612" aria-hidden="true" tabindex="-1"></a><span class="st">"Primate T-lymphotropic virus 1"</span>,</span>
-<span id="cb10-613"><a href="#cb10-613" aria-hidden="true" tabindex="-1"></a><span class="st">"Primate T-lymphotropic virus 2"</span>)</span>
-<span id="cb10-614"><a href="#cb10-614" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-615"><a href="#cb10-615" aria-hidden="true" tabindex="-1"></a>viruses_of_interest_common <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">"Anelloviridae sp."</span>, </span>
-<span id="cb10-616"><a href="#cb10-616" aria-hidden="true" tabindex="-1"></a><span class="st">"HSV-1"</span>, </span>
-<span id="cb10-617"><a href="#cb10-617" aria-hidden="true" tabindex="-1"></a><span class="st">"HBV"</span>, </span>
-<span id="cb10-618"><a href="#cb10-618" aria-hidden="true" tabindex="-1"></a><span class="st">"HPV4"</span>, </span>
-<span id="cb10-619"><a href="#cb10-619" aria-hidden="true" tabindex="-1"></a><span class="st">"HIV-1"</span>,</span>
-<span id="cb10-620"><a href="#cb10-620" aria-hidden="true" tabindex="-1"></a><span class="st">"HHV-6A"</span>,</span>
-<span id="cb10-621"><a href="#cb10-621" aria-hidden="true" tabindex="-1"></a><span class="st">"Parvovirus B19"</span>,</span>
-<span id="cb10-622"><a href="#cb10-622" aria-hidden="true" tabindex="-1"></a><span class="st">"EBV"</span>,</span>
-<span id="cb10-623"><a href="#cb10-623" aria-hidden="true" tabindex="-1"></a><span class="st">"CMV"</span>, </span>
-<span id="cb10-624"><a href="#cb10-624" aria-hidden="true" tabindex="-1"></a><span class="st">"HAdV C"</span>,</span>
-<span id="cb10-625"><a href="#cb10-625" aria-hidden="true" tabindex="-1"></a><span class="st">"HHV-7"</span>,</span>
-<span id="cb10-626"><a href="#cb10-626" aria-hidden="true" tabindex="-1"></a><span class="st">"SARS-CoV-2"</span>,</span>
-<span id="cb10-627"><a href="#cb10-627" aria-hidden="true" tabindex="-1"></a><span class="st">"HHV-6B"</span>,</span>
-<span id="cb10-628"><a href="#cb10-628" aria-hidden="true" tabindex="-1"></a><span class="st">"JCV"</span>,</span>
-<span id="cb10-629"><a href="#cb10-629" aria-hidden="true" tabindex="-1"></a><span class="st">"HAdV F"</span>,</span>
-<span id="cb10-630"><a href="#cb10-630" aria-hidden="true" tabindex="-1"></a><span class="st">"HCV"</span>,</span>
-<span id="cb10-631"><a href="#cb10-631" aria-hidden="true" tabindex="-1"></a><span class="st">"GBV-C"</span>,</span>
-<span id="cb10-632"><a href="#cb10-632" aria-hidden="true" tabindex="-1"></a><span class="st">"HEV"</span>,</span>
-<span id="cb10-633"><a href="#cb10-633" aria-hidden="true" tabindex="-1"></a><span class="st">"HPV2"</span>,</span>
-<span id="cb10-634"><a href="#cb10-634" aria-hidden="true" tabindex="-1"></a><span class="st">"HPV1"</span>,</span>
-<span id="cb10-635"><a href="#cb10-635" aria-hidden="true" tabindex="-1"></a><span class="st">"HTLV-1"</span>,</span>
-<span id="cb10-636"><a href="#cb10-636" aria-hidden="true" tabindex="-1"></a><span class="st">"HTLV-2"</span>)</span>
-<span id="cb10-637"><a href="#cb10-637" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb10-638"><a href="#cb10-638" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-641"><a href="#cb10-641" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
-<span id="cb10-642"><a href="#cb10-642" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: hv-species</span></span>
-<span id="cb10-643"><a href="#cb10-643" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig-width: 15</span></span>
-<span id="cb10-644"><a href="#cb10-644" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig-height: 10</span></span>
-<span id="cb10-645"><a href="#cb10-645" aria-hidden="true" tabindex="-1"></a><span class="co">#| warning: false</span></span>
-<span id="cb10-646"><a href="#cb10-646" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-647"><a href="#cb10-647" aria-hidden="true" tabindex="-1"></a>dataset_hv_reads_species <span class="ot">&lt;-</span> hv_reads_species <span class="sc">%&gt;%</span></span>
-<span id="cb10-648"><a href="#cb10-648" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(name, taxid, dataset, sample) <span class="sc">%&gt;%</span></span>
-<span id="cb10-649"><a href="#cb10-649" aria-hidden="true" tabindex="-1"></a>  <span class="fu">count</span>(<span class="at">name =</span> <span class="st">"n_reads_hv"</span>)</span>
-<span id="cb10-650"><a href="#cb10-650" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-651"><a href="#cb10-651" aria-hidden="true" tabindex="-1"></a>all_dataset_ra <span class="ot">&lt;-</span> read_counts_raw <span class="sc">%&gt;%</span></span>
-<span id="cb10-652"><a href="#cb10-652" aria-hidden="true" tabindex="-1"></a>  <span class="fu">left_join</span>(dataset_hv_reads_species, <span class="at">by=</span><span class="fu">c</span>(<span class="st">"sample"</span>)) <span class="sc">%&gt;%</span></span>
-<span id="cb10-653"><a href="#cb10-653" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">n_reads_hv =</span> <span class="fu">replace_na</span>(n_reads_hv, <span class="dv">0</span>)) <span class="sc">%&gt;%</span></span>
-<span id="cb10-654"><a href="#cb10-654" aria-hidden="true" tabindex="-1"></a>  <span class="fu">left_join</span>(libraries, <span class="at">by=</span><span class="fu">c</span>(<span class="st">"sample"</span>, <span class="st">"dataset"</span>)) <span class="sc">%&gt;%</span></span>
-<span id="cb10-655"><a href="#cb10-655" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">ra =</span> n_reads_hv <span class="sc">/</span> n_reads_raw)</span>
-<span id="cb10-656"><a href="#cb10-656" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-657"><a href="#cb10-657" aria-hidden="true" tabindex="-1"></a>filtered_dataset_ra <span class="ot">&lt;-</span> all_dataset_ra <span class="sc">%&gt;%</span></span>
-<span id="cb10-658"><a href="#cb10-658" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(name <span class="sc">%in%</span> viruses_of_interest) <span class="sc">%&gt;%</span></span>
-<span id="cb10-659"><a href="#cb10-659" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(ra <span class="sc">!=</span> <span class="dv">0</span>) <span class="sc">%&gt;%</span></span>
-<span id="cb10-660"><a href="#cb10-660" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">common_name =</span> viruses_of_interest_common[<span class="fu">match</span>(name, viruses_of_interest)]) <span class="sc">%&gt;%</span></span>
-<span id="cb10-661"><a href="#cb10-661" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">name =</span> common_name) <span class="sc">%&gt;%</span></span>
-<span id="cb10-662"><a href="#cb10-662" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(<span class="sc">-</span>common_name)</span>
-<span id="cb10-663"><a href="#cb10-663" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-664"><a href="#cb10-664" aria-hidden="true" tabindex="-1"></a><span class="co"># Once again, we filter for samples with 0 reads</span></span>
-<span id="cb10-665"><a href="#cb10-665" aria-hidden="true" tabindex="-1"></a>g_hv_species <span class="ot">&lt;-</span> <span class="fu">ggplot</span>(filtered_dataset_ra, <span class="fu">aes</span>(<span class="at">x =</span> name, <span class="at">y =</span> ra, <span class="at">color =</span> sample_type, <span class="at">shape=</span>dataset)) <span class="sc">+</span></span>
-<span id="cb10-666"><a href="#cb10-666" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_quasirandom</span>(<span class="at">method =</span> <span class="st">"quasirandom"</span>, <span class="at">size =</span><span class="dv">1</span>) <span class="sc">+</span></span>
-<span id="cb10-667"><a href="#cb10-667" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_y_log10</span>(<span class="at">labels =</span> <span class="fu">label_log</span>(<span class="at">digits =</span> <span class="dv">3</span>)) <span class="sc">+</span></span>
-<span id="cb10-668"><a href="#cb10-668" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_color_brewer</span>(<span class="at">palette =</span> <span class="st">"Dark2"</span>) <span class="sc">+</span></span>
-<span id="cb10-669"><a href="#cb10-669" aria-hidden="true" tabindex="-1"></a>  theme_kit <span class="sc">+</span></span>
-<span id="cb10-670"><a href="#cb10-670" aria-hidden="true" tabindex="-1"></a>  <span class="fu">coord_flip</span>()</span>
-<span id="cb10-671"><a href="#cb10-671" aria-hidden="true" tabindex="-1"></a>g_hv_species</span>
-<span id="cb10-672"><a href="#cb10-672" aria-hidden="true" tabindex="-1"></a><span class="co">#ggsave("/Users/harmonbhasin/work/securebio/blogs/blog_3/hv_species.png", g_hv_species, width = 15, height = 10)</span></span>
-<span id="cb10-673"><a href="#cb10-673" aria-hidden="true" tabindex="-1"></a><span class="in">```</span> </span>
-<span id="cb10-674"><a href="#cb10-674" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-677"><a href="#cb10-677" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
-<span id="cb10-678"><a href="#cb10-678" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: hv-all-found-per-dataset</span></span>
-<span id="cb10-679"><a href="#cb10-679" aria-hidden="true" tabindex="-1"></a><span class="co">#| include: false</span></span>
-<span id="cb10-680"><a href="#cb10-680" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-681"><a href="#cb10-681" aria-hidden="true" tabindex="-1"></a>dataset_specific_all_hv <span class="ot">&lt;-</span> hv_reads_species <span class="sc">%&gt;%</span> <span class="fu">select</span>(dataset, sample_type, name) <span class="sc">%&gt;%</span> <span class="fu">unique</span>()</span>
-<span id="cb10-682"><a href="#cb10-682" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-683"><a href="#cb10-683" aria-hidden="true" tabindex="-1"></a>p_all_viruses <span class="ot">&lt;-</span> dataset_specific_all_hv <span class="sc">%&gt;%</span> <span class="fu">filter</span>(sample_type <span class="sc">==</span> <span class="st">"plasma"</span>) <span class="sc">%&gt;%</span> <span class="fu">pull</span>(name) <span class="sc">%&gt;%</span> <span class="fu">unique</span>()</span>
-<span id="cb10-684"><a href="#cb10-684" aria-hidden="true" tabindex="-1"></a>wb_all_viruses <span class="ot">&lt;-</span> dataset_specific_all_hv <span class="sc">%&gt;%</span> <span class="fu">filter</span>(sample_type <span class="sc">==</span> <span class="st">"whole-blood"</span>) <span class="sc">%&gt;%</span> <span class="fu">pull</span>(name) <span class="sc">%&gt;%</span> <span class="fu">unique</span>()</span>
-<span id="cb10-685"><a href="#cb10-685" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-686"><a href="#cb10-686" aria-hidden="true" tabindex="-1"></a><span class="fu">length</span>(p_all_viruses)</span>
-<span id="cb10-687"><a href="#cb10-687" aria-hidden="true" tabindex="-1"></a><span class="fu">length</span>(wb_all_viruses)</span>
-<span id="cb10-688"><a href="#cb10-688" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-689"><a href="#cb10-689" aria-hidden="true" tabindex="-1"></a><span class="fu">setdiff</span>(p_all_viruses, wb_all_viruses)</span>
-<span id="cb10-690"><a href="#cb10-690" aria-hidden="true" tabindex="-1"></a><span class="fu">setdiff</span>(wb_all_viruses, p_all_viruses)</span>
-<span id="cb10-691"><a href="#cb10-691" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-692"><a href="#cb10-692" aria-hidden="true" tabindex="-1"></a><span class="fu">intersect</span>(p_all_viruses, wb_all_viruses)</span>
-<span id="cb10-693"><a href="#cb10-693" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb10-694"><a href="#cb10-694" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-697"><a href="#cb10-697" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
-<span id="cb10-698"><a href="#cb10-698" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: hv-relevant-found-per-dataset</span></span>
-<span id="cb10-699"><a href="#cb10-699" aria-hidden="true" tabindex="-1"></a><span class="co">#| include: false</span></span>
-<span id="cb10-700"><a href="#cb10-700" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-701"><a href="#cb10-701" aria-hidden="true" tabindex="-1"></a>dataset_specific_relevant_hv <span class="ot">&lt;-</span> filtered_dataset_ra <span class="sc">%&gt;%</span> <span class="fu">select</span>(dataset, sample_type, name) <span class="sc">%&gt;%</span> <span class="fu">unique</span>()</span>
-<span id="cb10-702"><a href="#cb10-702" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-703"><a href="#cb10-703" aria-hidden="true" tabindex="-1"></a>p_relevant_viruses <span class="ot">&lt;-</span> dataset_specific_relevant_hv <span class="sc">%&gt;%</span> <span class="fu">filter</span>(sample_type <span class="sc">==</span> <span class="st">"plasma"</span>) <span class="sc">%&gt;%</span> <span class="fu">pull</span>(name) <span class="sc">%&gt;%</span> <span class="fu">unique</span>()</span>
-<span id="cb10-704"><a href="#cb10-704" aria-hidden="true" tabindex="-1"></a>wb_relevant_viruses <span class="ot">&lt;-</span> dataset_specific_relevant_hv <span class="sc">%&gt;%</span> <span class="fu">filter</span>(sample_type <span class="sc">==</span> <span class="st">"whole-blood"</span>) <span class="sc">%&gt;%</span> <span class="fu">pull</span>(name) <span class="sc">%&gt;%</span> <span class="fu">unique</span>()</span>
-<span id="cb10-705"><a href="#cb10-705" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-706"><a href="#cb10-706" aria-hidden="true" tabindex="-1"></a><span class="fu">length</span>(p_relevant_viruses)</span>
-<span id="cb10-707"><a href="#cb10-707" aria-hidden="true" tabindex="-1"></a><span class="fu">length</span>(wb_relevant_viruses)</span>
-<span id="cb10-708"><a href="#cb10-708" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-709"><a href="#cb10-709" aria-hidden="true" tabindex="-1"></a><span class="fu">setdiff</span>(p_relevant_viruses, wb_relevant_viruses)</span>
-<span id="cb10-710"><a href="#cb10-710" aria-hidden="true" tabindex="-1"></a><span class="fu">setdiff</span>(wb_relevant_viruses, p_relevant_viruses)</span>
-<span id="cb10-711"><a href="#cb10-711" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-712"><a href="#cb10-712" aria-hidden="true" tabindex="-1"></a><span class="fu">intersect</span>(p_relevant_viruses, wb_relevant_viruses)</span>
-<span id="cb10-713"><a href="#cb10-713" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb10-714"><a href="#cb10-714" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-715"><a href="#cb10-715" aria-hidden="true" tabindex="-1"></a>To gain a more granular understanding of each sample type, we can look at the relative abundance of specific viruses in each sample type that may be of interest (totalling to 22): those that are linked to disease, characterized by latent infections (this is in accordance to the NAO's interest to detecting "stealth" pandemics), and those that are blood-borne. We get a wide range of human infecting viruses including Hepatitis, HIV, Herpes, and HPV. Importantly, most viruses seem to be detected in both sample types. When comparing the coverage of all viruses in each sample type, we see that plasma contains 104 unique viruses, whereas whole blood only countains about 56. However, when looking at these closely, we see that the majority of viruses captured by plasma all come from Anellovirdae, a non-harmful family of viruses. When we only look at the viruses specified above, we find that plasma contains 18 out of the 22 viruses, whereas whole blood contains 17 out of the 22 viruses. Specifically, plasma uniquely contains HBV, whereas whole blood uniquely contains HTLV-1 and HTLV-2.  </span>
-<span id="cb10-716"><a href="#cb10-716" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-717"><a href="#cb10-717" aria-hidden="true" tabindex="-1"></a><span class="fu"># Discussion</span></span>
-<span id="cb10-718"><a href="#cb10-718" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-719"><a href="#cb10-719" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-720"><a href="#cb10-720" aria-hidden="true" tabindex="-1"></a><span class="fu"># Conclusion</span></span>
-</code><button title="Copy to Clipboard" class="code-copy-button" data-in-quarto-modal=""><i class="bi"></i></button></pre></div>
-</div></div></div></div></div>
+</script>
 </div> <!-- /content -->
 
 
