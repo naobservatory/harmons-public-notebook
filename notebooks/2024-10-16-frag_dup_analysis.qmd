@@ -1,0 +1,228 @@
+---
+title: "Fragment length and duplication analysis Crits Christoph 2021"
+author: "Harmon Bhasin"
+date: 2024-10-16
+format:
+  html:
+    toc: true
+    fig-format: svg
+    fig-dpi: 300
+    fig-width: 10
+    fig-asp: 0.8
+---
+
+```{r setup, include=FALSE}
+library(pacman)
+p_load(tidyverse, here, fs, knitr, broom, cowplot, patchwork, ggbeeswarm, ggridges, utils, RColorBrewer, ggpubr, gridGraphics)
+
+colors_oi <- grDevices::palette.colors()  
+colors_oi['yellow'] <- "#F5C710"
+colors_oi <- colors_oi |> unname()
+
+colors_sample_source <- c(brewer.pal(n=12, name = "Paired"), brewer.pal(n = 6, name = "Pastel1")) |> unname()
+
+sample_sheet <- read_csv("/Users/harmonbhasin/work/securebio/pipeline-development/random-mgs-analysis/frag_dup_analysis/samplesheet.csv") |> select(sample)
+hv_hits <- read_tsv("/Users/harmonbhasin/work/securebio/pipeline-development/random-mgs-analysis/frag_dup_analysis/hv_hits_putative_collapsed.tsv.gz") %>% mutate(sample = factor(sample, levels = sample_sheet$sample))
+```
+
+# Exploratory analysis
+
+## All mapped reads
+```{r plot-all-mapped-reads}
+clumpify_dupcount_plot <- hv_hits |>
+  ggplot(aes(color = sample, x = clumpify_dupcount)) +
+  scale_y_log10() +
+  geom_freqpoly() +
+  scale_color_manual(values = colors_sample_source) +
+  theme_light()
+
+bowtie2_dupcount_plot <- hv_hits |>
+  ggplot(aes(color = sample, x = bowtie2_dupcount)) +
+  scale_y_log10() +
+  geom_freqpoly() +
+  scale_color_manual(values = colors_sample_source) +
+  theme_light()
+
+
+ggarrange(clumpify_dupcount_plot, bowtie2_dupcount_plot, ncol = 2, common.legend = TRUE)
+```
+
+## Widths and merge rates
+
+### All dedup'd reads
+
+```{r}
+hv_hits |>
+  count(sample, bbmerge_merge_status) |>
+  mutate(.by = sample, prop = n / sum(n))
+```
+
+```{r}
+clumpify_width <- hv_hits |> 
+  mutate(width = ifelse(bbmerge_merge_status, bbmerge_frag_length, 320)) |>
+  ggplot(aes(color = sample, x=width)) +
+  scale_y_log10(limits = c(1, 1e5)) + 
+  geom_freqpoly() +
+  theme_light() +
+  theme(legend.position = "none")
+
+bowtie2_width <- hv_hits |>
+  ggplot(aes(color = sample, x=bowtie2_frag_length)) +
+  scale_y_log10(limits = c(1, 1e5), ) + 
+  geom_freqpoly() +
+  theme_light() +
+  theme(legend.position = "none")
+
+ggarrange(clumpify_width, bowtie2_width, ncol = 2, common.legend = TRUE)
+```
+
+### HV reads
+```{r}
+true_hv_hits <- hv_hits |>
+  filter(hit_hv == 1)
+
+hv_merged_stats <- true_hv_hits |>
+  count(sample, bbmerge_merge_status) |>
+  mutate(.by = sample, prop = n / sum(n)) |>
+  print()
+```
+
+```{r}
+true_hv_hits |>
+  ggplot(aes(color = sample, x = bbmerge_frag_length)) +
+    labs(x = "width") +
+    scale_y_log10() +
+    scale_color_manual(values = colors_sample_source) +
+    geom_freqpoly() +
+    theme_light()
+```
+
+```{r}
+frac_merged <- true_hv_hits |>
+  summarize(.by = sample,
+    frac_merged = mean(bbmerge_merge_status) |> round(2)
+  )
+
+true_hv_hits |>
+  filter(bbmerge_merge_status == 1) |>
+  ggplot(aes(x = bbmerge_frag_length, y = sample, fill = sample)) +
+  labs(x = "Width", y = "Sample") +
+  scale_fill_manual(values = colors_sample_source) +
+  geom_density_ridges(stat = "binline", scale = 2, alpha = 0.5) +
+  geom_text(data = frac_merged, aes(label = frac_merged), 
+    x = 40, nudge_y = 0.5
+  ) +
+  annotate("text", x = 40, y = 19, label = "Fraction merged") +
+  theme_light()
+
+```
+
+
+## HV insert lengths from alignments
+
+```{r}
+true_hv_hits |>
+  ggplot(aes(y=bowtie2_frag_length, x=bbmerge_frag_length)) +
+  geom_point(alpha = 0.5) +
+  theme_light()
+```
+
+```{r}
+true_hv_hits |>
+  ggplot(aes(x = bowtie2_frag_length, y = sample, fill = sample)) +
+  labs(x = "Width from alignment", y = "Sample") +
+  scale_fill_manual(values = colors_sample_source) +
+  expand_limits(x = 0) +
+  geom_vline(xintercept = 300, color = "grey") +
+  geom_density_ridges(stat = "binline", scale = 2, alpha = 0.5) +
+  theme_light()
+```
+
+```{r}
+true_hv_hits |>
+  ggplot(aes(x = bowtie2_frag_length, y = sample, fill = sample)) +
+  facet_wrap(~bbmerge_merge_status, labeller = "label_both") +
+  labs(x = "Width from alignment", y = "Sample") +
+  scale_fill_manual(values = colors_sample_source) +
+  expand_limits(x = 0) +
+  geom_vline(xintercept = 300, color = "grey") +
+  geom_density_ridges(stat = "binline", scale = 2, alpha = 0.5) +
+  theme_light()
+```
+
+## Dup stats
+
+```{r}
+bowtie2_dedup <- true_hv_hits |>
+  filter(bowtie2_dupcount > 1, seq_id == bowtie2_exemplar)
+clumpify_dedup <- true_hv_hits |>
+  filter(clumpify_dupcount > 1)
+
+# Find shared and non-shared sets of reads
+bowtie2_seq_ids <- bowtie2_dedup$seq_id
+clumpify_seq_ids <- clumpify_dedup$seq_id
+
+shared_seq_ids <- intersect(bowtie2_seq_ids, clumpify_seq_ids)
+only_bowtie2_seq_ids <- setdiff(bowtie2_seq_ids, clumpify_seq_ids)
+only_clumpify_seq_ids <- setdiff(clumpify_seq_ids, bowtie2_seq_ids)
+
+# Create a data frame for plotting
+venn_data <- data.frame(
+  Category = c("Shared", "Only Bowtie2", "Only Clumpify"),
+  Count = c(length(shared_seq_ids), length(only_bowtie2_seq_ids), length(only_clumpify_seq_ids))
+)
+
+# Plot the Venn diagram-like representation
+# Calculate percentages
+venn_data <- venn_data %>%
+  mutate(Percentage = Count / sum(Count) * 100)
+
+comparison_of_deduplication <- ggplot(venn_data, aes(x = "", y = Count, fill = Category)) +
+  geom_bar(stat = "identity", width = 1) +
+  coord_polar("y", start = 0) +
+  geom_text(aes(label = paste(Category, "\n", Count, "\n", sprintf("(%.1f%%)", Percentage))), 
+            position = position_stack(vjust = 0.5)) +
+  labs(title = "Comparison of Deduplicated Reads",
+       subtitle = "Shared and unique seq_ids between Bowtie2 and Clumpify") +
+  scale_fill_manual(values = colors_oi[c(2,3,4)]) +
+  theme_void() +
+  theme(legend.position = "none")
+comparison_of_deduplication
+```
+
+```{r}
+bowtie2_dens <- bowtie2_dedup |>
+  count(sample, bowtie2_dupcount) |>
+  mutate(.by = sample, frac = n / sum(n))
+
+clumpify_dens <- clumpify_dedup |>
+  count(sample, clumpify_dupcount) |>
+  mutate(.by = sample, frac = n / sum(n))
+```
+
+```{r}
+
+# Calculate the overall y-axis range
+y_min <- min(c(bowtie2_dens$frac, clumpify_dens$frac), na.rm = TRUE)
+y_max <- max(c(bowtie2_dens$frac, clumpify_dens$frac), na.rm = TRUE)
+
+plot_bowtie2_dens <- bowtie2_dens |>
+  ggplot(aes(x = bowtie2_dupcount, y = frac, color = sample)) +
+  scale_y_log10(limits = c(y_min, y_max)) +
+  scale_x_continuous() +
+  scale_color_manual(values = colors_sample_source) +
+  labs(y = "Fraction of inserts", x = "Copies", title = "Bowtie2") +
+  theme_light() +
+  geom_line()
+
+plot_clumpify_dens <- clumpify_dens |>
+  ggplot(aes(x = clumpify_dupcount, y = frac, color = sample)) +
+  scale_y_log10(limits = c(y_min, y_max)) +
+  scale_x_continuous() +
+  scale_color_manual(values = colors_sample_source) +
+  labs(y = "Fraction of inserts", x = "Copies", title = "Clumpify") +
+  theme_light() +
+  geom_line()
+
+ggarrange(plot_bowtie2_dens, plot_clumpify_dens, ncol = 2, align = "v", common.legend = TRUE, legend = "bottom")
+```
